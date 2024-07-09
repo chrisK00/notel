@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -32,8 +34,45 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: EditPage(),
+      home: HomePage(),
     );
+  }
+}
+
+class Note {
+  String text = "";
+  DateTime date = DateTime.now();
+  Note({this.text = "", DateTime? date}) : date = date ?? DateTime.now();
+}
+
+class HomePage extends StatelessWidget {
+  // TODO this will only contain a few lines of the actual note text, would be good to have some pagination on scroll aswell
+  final notes = <Note>[];
+
+  @override
+  Widget build(BuildContext context) {
+    notes.addAll([
+      Note(text: "hi", date: DateTime.now()),
+      Note(text: "sup"),
+      Note(text: "beep")
+    ]);
+
+    return Column(
+        children: notes
+            .map((n) => Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Text(
+                      DateFormat('d MMMM yyyy').format(n.date),
+                      textScaler: const TextScaler.linear(0.5),
+                    ),
+                    Text(
+                      n.text,
+                      textScaler: const TextScaler.linear(0.5),
+                    )
+                  ],
+                ))
+            .toList());
   }
 }
 
