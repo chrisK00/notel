@@ -1,19 +1,21 @@
-import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'db.dart';
+
+void main() async {
+// Avoid errors caused by flutter upgrade.
+  WidgetsFlutterBinding.ensureInitialized();
+  await Db.open();
+  runApp(const App());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -29,9 +31,6 @@ class MyApp extends StatelessWidget {
         // Notice that the counter didn't reset back to zero; the application
         // state is not lost during the reload. To reset the state, use hot
         // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
@@ -40,20 +39,14 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class Note {
-  Note({required this.id, this.text = "", DateTime? date})
-      : date = date ?? DateTime.now();
-  int id;
-  String text = "";
-  DateTime date = DateTime.now();
-}
-
+// is this really stateless? will this reload when user presses back after creating Note
 class HomePage extends StatelessWidget {
-  // TODO this will only contain a few lines of the actual note text, would be good to have some pagination on scroll aswell
+  // TODO this will only contain a few lines of the actual note text, would be good to mb have some pagination on scroll aswell.
   final notes = <Note>[];
 
   @override
   Widget build(BuildContext context) {
+    // TODO: fetch from DB
     notes.addAll([
       Note(id: 1, text: "hi", date: DateTime.now()),
       Note(id: 2, text: "sup"),
@@ -68,7 +61,6 @@ class HomePage extends StatelessWidget {
                   onTap: () {
                     // osäker på om det är korrekt att använda navigator
                     Navigator.push(
-                        // wtf is up with the const keyword lol
                         context,
                         MaterialPageRoute(
                             builder: (c) => EditPage(noteId: n.id)));
@@ -112,14 +104,28 @@ class EditPage extends StatefulWidget {
 
 class _EditPageState extends State<EditPage> {
   final _controller = QuillController.basic();
+  var _note = Note();
+
+  Future<void> _loadNote() async {
+    final db = await Db.open();
+    // TODO untested code
+    if (widget.noteId == null) {
+      _note.id = await db.insert(Db.noteTable, _note.toMap());
+    } else {
+      final getNoteResult = await db.query(Db.noteTable,
+          where: "id= ?", whereArgs: [widget.noteId], limit: 1);
+      _note = Note.fromMap(getNoteResult.first);
+    }
+  }
 
   @override
-  void initState() {
+  void initState() async {
     super.initState();
     _controller.document.changes.listen(_onTextChanged);
 
     // TODO: if note exists fetch from DB, else create new. Delete note if empty?
     log('Existing NoteId: ${widget.noteId}');
+    _loadNote().then((_) => {});
   }
 
   @override
