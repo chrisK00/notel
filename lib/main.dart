@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
@@ -40,9 +41,11 @@ class MyApp extends StatelessWidget {
 }
 
 class Note {
+  Note({required this.id, this.text = "", DateTime? date})
+      : date = date ?? DateTime.now();
+  int id;
   String text = "";
   DateTime date = DateTime.now();
-  Note({this.text = "", DateTime? date}) : date = date ?? DateTime.now();
 }
 
 class HomePage extends StatelessWidget {
@@ -52,31 +55,57 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     notes.addAll([
-      Note(text: "hi", date: DateTime.now()),
-      Note(text: "sup"),
-      Note(text: "beep")
+      Note(id: 1, text: "hi", date: DateTime.now()),
+      Note(id: 2, text: "sup"),
+      Note(id: 3, text: "beep")
     ]);
 
-    return Column(
-        children: notes
-            .map((n) => Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Text(
-                      DateFormat('d MMMM yyyy').format(n.date),
-                      textScaler: const TextScaler.linear(0.5),
+    return Column(children: [
+      Column(
+          children: notes
+              .map((n) => GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    // osäker på om det är korrekt att använda navigator
+                    Navigator.push(
+                        // wtf is up with the const keyword lol
+                        context,
+                        MaterialPageRoute(
+                            builder: (c) => EditPage(noteId: n.id)));
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Text(
+                          DateFormat('d MMMM yyyy').format(n.date),
+                          textScaler: const TextScaler.linear(0.5),
+                        ),
+                        Text(
+                          n.text,
+                          textScaler: const TextScaler.linear(0.5),
+                        ),
+                      ],
                     ),
-                    Text(
-                      n.text,
-                      textScaler: const TextScaler.linear(0.5),
-                    )
-                  ],
-                ))
-            .toList());
+                  )))
+              .toList()),
+      FloatingActionButton(
+        onPressed: () => Navigator.push(
+            context, MaterialPageRoute(builder: (c) => const EditPage())),
+        child: const Icon(
+          Icons.add,
+          size: 40,
+        ),
+      )
+    ]);
   }
 }
 
 class EditPage extends StatefulWidget {
+  const EditPage({super.key, this.noteId});
+  final int? noteId;
+
   @override
   State<StatefulWidget> createState() => _EditPageState();
 }
@@ -88,6 +117,9 @@ class _EditPageState extends State<EditPage> {
   void initState() {
     super.initState();
     _controller.document.changes.listen(_onTextChanged);
+
+    // TODO: if note exists fetch from DB, else create new. Delete note if empty?
+    log('Existing NoteId: ${widget.noteId}');
   }
 
   @override
@@ -97,9 +129,9 @@ class _EditPageState extends State<EditPage> {
   }
 
   void _onTextChanged(event) {
-    print('$event');
+    log('$event');
     final text = _controller.document.toPlainText();
-    print('Text changed: $text');
+    log('Text changed: $text');
     // https://stackoverflow.com/questions/71815023/dart-how-to-listen-for-text-change-in-quill-text-editor-flutter
   }
 
@@ -115,10 +147,9 @@ class _EditPageState extends State<EditPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                        onPressed: () => {},
-                        icon:
-                            const Icon(Icons // todo popup if changes were made
-                                .arrow_back)),
+                        onPressed: () => Navigator.pop(
+                            context), // todo popup if changes were made
+                        icon: const Icon(Icons.arrow_back)),
                     IconButton(
                         onPressed: () => {}, icon: const Icon(Icons.save))
                   ],
