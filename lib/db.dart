@@ -36,7 +36,7 @@ class Note {
     return {
       'id': id,
       'text': text,
-      'date': date,
+      'date': date.toString(),
     };
   }
 
@@ -44,8 +44,7 @@ class Note {
     return Note(
       id: map['id'],
       text: map['text'],
-      date:
-          map['date'], // TODO: dont think itll map from text directly to date?
+      date: DateTime.parse(map['date']),
     );
   }
 

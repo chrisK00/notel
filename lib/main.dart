@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import 'db.dart';
 
+// TODO: christian vscode ta bort ngn vscode grej som gör att det står run istället för debug pil längst upp höger
 void main() async {
 // Avoid errors caused by flutter upgrade.
   WidgetsFlutterBinding.ensureInitialized();
@@ -119,7 +120,7 @@ class _EditPageState extends State<EditPage> {
   }
 
   @override
-  void initState() async {
+  void initState() {
     super.initState();
     _controller.document.changes.listen(_onTextChanged);
 
