@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
+// i think this should be a singleton and DB should never be closed unless app is disposed
 class Db {
   static const databaseName = 'notel.db';
   static const noteTable = "Note";
@@ -23,6 +24,18 @@ class Db {
 
     return database;
   }
+
+  static Future<void> seed(Database db) async {
+    db.database.delete(noteTable);
+    final batch = db.batch();
+    batch.insert(Db.noteTable,
+        Note(text: "10:00 awake finally", date: DateTime.now()).toMap());
+    batch.insert(
+        Db.noteTable, Note(text: "food time", date: DateTime.now()).toMap());
+    batch.insert(Db.noteTable,
+        Note(text: "where are my keys", date: DateTime.now()).toMap());
+    await batch.commit(noResult: true);
+  }
 }
 
 class Note {
@@ -43,7 +56,7 @@ class Note {
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
       id: map['id'],
-      text: map['text'],
+      text: map['text'] ?? '', // should never be null need to fix
       date: DateTime.parse(map['date']),
     );
   }

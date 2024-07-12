@@ -1,8 +1,10 @@
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
+import 'package:sqflite/sqflite.dart';
 
 import 'db.dart';
 
@@ -10,7 +12,11 @@ import 'db.dart';
 void main() async {
 // Avoid errors caused by flutter upgrade.
   WidgetsFlutterBinding.ensureInitialized();
-  await Db.open();
+  final db = await Db.open();
+  if (kDebugMode) {
+    log('Db seed');
+    await Db.seed(db);
+  }
   runApp(const App());
 }
 
@@ -41,18 +47,33 @@ class App extends StatelessWidget {
 }
 
 // is this really stateless? will this reload when user presses back after creating Note
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
   // TODO this will only contain a few lines of the actual note text, would be good to mb have some pagination on scroll aswell.
   final notes = <Note>[];
 
+  // TODO add orderby date
+  Future<void> loadNotes(Database db) async {
+    // TODO: hack
+    if (notes.isNotEmpty) {
+      return;
+    }
+    log('loading notes');
+    final rows =
+        await db.rawQuery("select id,substr(text, 0, 8) text, date from Note");
+    final mappedRows = rows.map((n) => Note.fromMap(n)).toList();
+    setState(() {
+      notes.addAll(mappedRows);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // TODO: fetch from DB
-    notes.addAll([
-      Note(id: 1, text: "hi", date: DateTime.now()),
-      Note(id: 2, text: "sup"),
-      Note(id: 3, text: "beep")
-    ]);
+    Db.open().then(loadNotes);
 
     return Column(children: [
       Column(
@@ -116,6 +137,9 @@ class _EditPageState extends State<EditPage> {
       final getNoteResult = await db.query(Db.noteTable,
           where: "id= ?", whereArgs: [widget.noteId], limit: 1);
       _note = Note.fromMap(getNoteResult.first);
+      setState(() {
+        _controller.document.insert(0, _note.text);
+      });
     }
   }
 
