@@ -12,8 +12,6 @@ class Db {
   )""");
   }
 
-  // TODO: if debug, seed db
-
 // https://docs.flutter.dev/cookbook/persistence/sqlite
   //https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
   static Future<Database> open() async {
@@ -28,8 +26,12 @@ class Db {
   static Future<void> seed(Database db) async {
     db.database.delete(noteTable);
     final batch = db.batch();
-    batch.insert(Db.noteTable,
-        Note(text: "10:00 awake finally", date: DateTime.now()).toMap());
+    batch.insert(
+        Db.noteTable,
+        Note(
+                text: "10:00 awake finally\ntime to eat n poo. Yummy",
+                date: DateTime.now())
+            .toMap());
     batch.insert(
         Db.noteTable, Note(text: "food time", date: DateTime.now()).toMap());
     batch.insert(Db.noteTable,
