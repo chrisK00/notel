@@ -28,6 +28,8 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
   Widget currentPage = HomePage();
+  var currentPageIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -46,18 +48,30 @@ class _AppState extends State<App> {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: Scaffold(
-          body: currentPage,
-          bottomNavigationBar: NavigationBar(
-            destinations: [
-              IconButton(
-                  onPressed: () => setState(() => currentPage = HomePage()),
-                  icon: const Icon(Icons.home)),
-              IconButton(
-                  onPressed: () => setState(() => currentPage = SettingsPage()),
-                  icon: const Icon(Icons.settings))
-            ],
-          )),
+      home: Scaffold(body: currentPage, bottomNavigationBar: navbar()),
+    );
+  }
+
+  BottomNavigationBar navbar() {
+    return BottomNavigationBar(
+      currentIndex: currentPageIndex,
+      onTap: (value) => {
+        switch (value) {
+          0 => setState(() {
+              currentPage = HomePage();
+              currentPageIndex = 0;
+            }),
+          1 => setState(() {
+              currentPage = SettingsPage();
+              currentPageIndex = 1;
+            }),
+          int() => throw UnimplementedError(),
+        }
+      },
+      items: const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings')
+      ],
     );
   }
 }
@@ -67,7 +81,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // TODO: implement build
     return Container(
-      margin: EdgeInsets.only(top: 30),
+      margin: const EdgeInsets.only(top: 30),
       alignment: Alignment.center,
       child: Column(
         children: [
@@ -89,8 +103,9 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-// is this really stateless? will this reload when user presses back after creating Note
 class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
