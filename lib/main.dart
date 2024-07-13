@@ -62,8 +62,12 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     log('loading notes');
-    final rows =
-        await db.rawQuery("select id,substr(text, 0, 36) text, date from Note");
+    final rows = await db.rawQuery(r'''SELECT
+        id,
+        substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
+        date
+        FROM NOTE
+        ''');
     final mappedRows = rows.map((n) {
       final note = Note.fromMap(n);
       log('length ${note.text.length}');
@@ -85,51 +89,66 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
         body: Container(
           margin: const EdgeInsets.only(top: 40),
-          child: Column(
-              children: notes
-                  .map((n) => GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onTap: () {
-                        // osäker på om det är korrekt att använda navigator
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (c) => EditPage(noteId: n.id)));
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Text(
-                              DateFormat('d MMMM yyyy').format(n.date),
-                            ),
-                            SizedBox(
-                              width: 200,
-                              child: Text(
-                                n.text,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )))
-                  .toList()),
+          child:
+              Column(children: notes.map((n) => noteRow(context, n)).toList()),
         ),
         bottomNavigationBar: Container(
           margin: const EdgeInsets.only(right: 10, bottom: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              FloatingActionButton(
-                onPressed: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (c) => const EditPage())),
-                child: const Icon(
-                  Icons.add,
-                  size: 40,
+              addNoteButton(context),
+            ],
+          ),
+        ));
+  }
+
+  GestureDetector noteRow(BuildContext context, Note n) {
+    return GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () async {
+          // osäker på om det är korrekt att använda navigator
+          final reloadPage = await Navigator.push(context,
+              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
+          // TODO: rethink this process. if we are scrolling we dont want to lose scroll position/same with search
+          // This seems to cause some lag
+          if (reloadPage) {
+            setState(() => notes.clear());
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Text(
+                DateFormat('d MMMM yyyy').format(n.date),
+              ),
+              SizedBox(
+                width: 200,
+                child: Text(
+                  n.text,
                 ),
               ),
             ],
           ),
         ));
+  }
+
+  FloatingActionButton addNoteButton(BuildContext context) {
+    return FloatingActionButton(
+      // TODO same as on click edit note
+      onPressed: () async {
+        final reloadPage = await Navigator.push(
+            context, MaterialPageRoute(builder: (c) => const EditPage()));
+        if (reloadPage) {
+          setState(() => notes.clear());
+        }
+      },
+      child: const Icon(
+        Icons.add,
+        size: 40,
+      ),
+    );
   }
 }

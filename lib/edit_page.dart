@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ class EditPage extends StatefulWidget {
 
 class _EditPageState extends State<EditPage> {
   final _controller = QuillController.basic();
+  var _hasUnsavedChanges = false;
   var _note = Note();
 
   Future<void> _loadNote() async {
@@ -21,12 +23,21 @@ class _EditPageState extends State<EditPage> {
     // TODO untested code
     if (widget.noteId == null) {
       _note.id = await db.insert(Db.noteTable, _note.toMap());
+      _controller.document.changes.listen(_onTextChanged);
     } else {
       final getNoteResult = await db.query(Db.noteTable,
           where: "id= ?", whereArgs: [widget.noteId], limit: 1);
       _note = Note.fromMap(getNoteResult.first);
+
+      if (_note.text.isEmpty) {
+        _controller.document.changes.listen(_onTextChanged);
+        return;
+      }
+
+      final json = jsonDecode(_note.text);
       setState(() {
-        _controller.document.insert(0, _note.text);
+        _controller.document = Document.fromJson(json);
+        _controller.document.changes.listen(_onTextChanged);
       });
     }
   }
@@ -34,7 +45,6 @@ class _EditPageState extends State<EditPage> {
   @override
   void initState() {
     super.initState();
-    _controller.document.changes.listen(_onTextChanged);
 
     // TODO: if note exists fetch from DB, else create new. Delete note if empty?
     log('Existing NoteId: ${widget.noteId}');
@@ -47,10 +57,27 @@ class _EditPageState extends State<EditPage> {
     super.dispose();
   }
 
+  Future _onSave() async {
+    // TODO kanske ska använda changes ist o inserta det typ?? eller liknande bättre prestanda
+    // _controller.changes
+    setState(() => _hasUnsavedChanges = false);
+    final json = jsonEncode(_controller.document.toDelta().toJson());
+    // TODO: borde vara i ett repo
+    final db = await Db.open();
+    try {
+      final changesMade = await db
+          .rawUpdate('UPDATE NOTE SET TEXT = ? WHERE id = ?', [json, _note.id]);
+      log(changesMade.toString());
+    } catch (e) {
+      setState(() => _hasUnsavedChanges = true);
+      log('Failed to update note', error: e);
+    }
+  }
+
+// TODO: save button should be displayed when changes have been made
   void _onTextChanged(event) {
-    log('$event');
-    final text = _controller.document.toPlainText();
-    log('Text changed: $text');
+    log('Text changed: $event');
+    setState(() => _hasUnsavedChanges = true);
     // https://stackoverflow.com/questions/71815023/dart-how-to-listen-for-text-change-in-quill-text-editor-flutter
   }
 
@@ -67,10 +94,9 @@ class _EditPageState extends State<EditPage> {
                   children: [
                     IconButton(
                         onPressed: () => Navigator.pop(
-                            context), // todo popup if changes were made
+                            context, true), // todo popup if changes were made
                         icon: const Icon(Icons.arrow_back)),
-                    IconButton(
-                        onPressed: () => {}, icon: const Icon(Icons.save))
+                    saveButton()
                   ],
                 ),
                 // https://www.youtube.com/watch?v=L2qG-qlhx-s&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=3
@@ -85,6 +111,17 @@ class _EditPageState extends State<EditPage> {
                 textToolbar(),
               ],
             )));
+  }
+
+  Visibility saveButton() {
+    return Visibility(
+      visible: _hasUnsavedChanges,
+      child: IconButton(
+          onPressed: () async {
+            _onSave();
+          },
+          icon: const Icon(Icons.save)),
+    );
   }
 
   QuillSimpleToolbar textToolbar() => QuillToolbar.simple(

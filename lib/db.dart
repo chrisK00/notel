@@ -24,18 +24,18 @@ class Db {
   }
 
   static Future<void> seed(Database db) async {
+    final today = DateTime.now();
     db.database.delete(noteTable);
     final batch = db.batch();
     batch.insert(
         Db.noteTable,
         Note(
-                text: "10:00 awake finally\ntime to eat n poo. Yummy",
-                date: DateTime.now())
+                text:
+                    r'[{"insert":"10:00 awake finally\ntime to eat n poo. Yummy\n"}]',
+                date: today)
             .toMap());
-    batch.insert(
-        Db.noteTable, Note(text: "food time", date: DateTime.now()).toMap());
     batch.insert(Db.noteTable,
-        Note(text: "where are my keys", date: DateTime.now()).toMap());
+        Note(text: r'[{"insert":"food time\n"}]', date: today).toMap());
     await batch.commit(noResult: true);
   }
 }
