@@ -19,9 +19,15 @@ void main() async {
   runApp(const App());
 }
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
   const App({super.key});
 
+  @override
+  State<App> createState() => _AppState();
+}
+
+class _AppState extends State<App> {
+  Widget currentPage = HomePage();
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -40,7 +46,45 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: HomePage(),
+      home: Scaffold(
+          body: currentPage,
+          bottomNavigationBar: NavigationBar(
+            destinations: [
+              IconButton(
+                  onPressed: () => setState(() => currentPage = HomePage()),
+                  icon: const Icon(Icons.home)),
+              IconButton(
+                  onPressed: () => setState(() => currentPage = SettingsPage()),
+                  icon: const Icon(Icons.settings))
+            ],
+          )),
+    );
+  }
+}
+
+class SettingsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // TODO: implement build
+    return Container(
+      margin: EdgeInsets.only(top: 30),
+      alignment: Alignment.center,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // TODO implement exporting, also later on add encryption
+              const Text('Export Notes'),
+              ElevatedButton(
+                  onPressed: () {},
+                  child: const Icon(
+                    Icons.save_alt,
+                  ))
+            ],
+          )
+        ],
+      ),
     );
   }
 }

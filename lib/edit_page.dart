@@ -89,16 +89,7 @@ class _EditPageState extends State<EditPage> {
             margin: const EdgeInsets.only(top: 30),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                        onPressed: () => Navigator.pop(
-                            context, true), // todo popup if changes were made
-                        icon: const Icon(Icons.arrow_back)),
-                    saveButton()
-                  ],
-                ),
+                actions(context),
                 // https://www.youtube.com/watch?v=L2qG-qlhx-s&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=3
                 // TODO at top of screen back < button and save button and inbetween add also note date
                 // TODO tags would be nice, e.g huvudvärk, or maybe just implement a good search feature that counts results words (if duplicated word in a day only take 1)
@@ -113,10 +104,28 @@ class _EditPageState extends State<EditPage> {
             )));
   }
 
+  Padding actions(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 1, right: 3, bottom: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+              iconSize: 30,
+              onPressed: () => Navigator.pop(
+                  context, true), // todo popup if changes were made
+              icon: const Icon(Icons.arrow_back)),
+          saveButton()
+        ],
+      ),
+    );
+  }
+
   Visibility saveButton() {
     return Visibility(
       visible: _hasUnsavedChanges,
       child: IconButton(
+          iconSize: 30,
           onPressed: () async {
             _onSave();
           },
