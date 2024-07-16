@@ -126,9 +126,7 @@ class _EditPageState extends State<EditPage> {
       visible: _hasUnsavedChanges,
       child: IconButton(
           iconSize: 30,
-          onPressed: () async {
-            _onSave();
-          },
+          onPressed: () async => _onSave(),
           icon: const Icon(Icons.save)),
     );
   }

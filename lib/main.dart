@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'db.dart';
 import 'edit_page.dart';
+import 'settings_page.dart';
 
 void main() async {
 // Avoid errors caused by flutter upgrade.
@@ -27,7 +28,7 @@ class App extends StatefulWidget {
 }
 
 class _AppState extends State<App> {
-  Widget currentPage = HomePage();
+  Widget currentPage = const HomePage();
   var currentPageIndex = 0;
 
   @override
@@ -58,47 +59,20 @@ class _AppState extends State<App> {
       onTap: (value) => {
         switch (value) {
           0 => setState(() {
-              currentPage = HomePage();
+              currentPage = const HomePage();
               currentPageIndex = 0;
             }),
           1 => setState(() {
               currentPage = SettingsPage();
               currentPageIndex = 1;
             }),
-          int() => throw UnimplementedError(),
+          _ => throw UnimplementedError(),
         }
       },
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings')
       ],
-    );
-  }
-}
-
-class SettingsPage extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // TODO: implement build
-    return Container(
-      margin: const EdgeInsets.only(top: 30),
-      alignment: Alignment.center,
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              // TODO implement exporting, also later on add encryption
-              const Text('Export Notes'),
-              ElevatedButton(
-                  onPressed: () {},
-                  child: const Icon(
-                    Icons.save_alt,
-                  ))
-            ],
-          )
-        ],
-      ),
     );
   }
 }
