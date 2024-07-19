@@ -100,6 +100,7 @@ class _HomePageState extends State<HomePage> {
         substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
         date
         FROM NOTE
+        ORDER BY date DESC
         ''');
     final mappedRows = rows.map((n) {
       final note = Note.fromMap(n);

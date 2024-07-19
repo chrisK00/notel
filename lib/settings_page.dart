@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
+import 'package:notel/db.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SettingsPage extends StatelessWidget {
   @override
@@ -12,17 +17,32 @@ class SettingsPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // TODO implement exporting, also later on add encryption
               const Text('Export Notes'),
               ElevatedButton(
-                  onPressed: () {},
+                  onPressed: exportNotes,
                   child: const Icon(
                     Icons.save_alt,
                   ))
             ],
-          )
+          ),
         ],
       ),
     );
+  }
+
+  void exportNotes() async {
+    // TODO add encryption
+    final db = await Db.open();
+    final notes = await db.query(Db.noteTable);
+    final notesJson = jsonEncode(notes);
+    Share.share(notesJson, subject: 'notes.json');
+  }
+
+// todo
+// maybe add store in gdrive support if safe without backend?
+  void importNotes() {
+// select file
+// List<Map<String, dynamic>> decodedNotesJson = jsonDecode(notesJson);
+// final notes = decodedJson.map((x) => Note.fromMap(x)).toList();
   }
 }

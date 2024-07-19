@@ -30,12 +30,16 @@ class Db {
     batch.insert(
         Db.noteTable,
         Note(
+                text: r'[{"insert":"food time\n"}]',
+                date: DateTime(today.year, 1, 1))
+            .toMap());
+    batch.insert(
+        Db.noteTable,
+        Note(
                 text:
                     r'[{"insert":"10:00 awake finally\ntime to eat n poo. Yummy\n"}]',
                 date: today)
             .toMap());
-    batch.insert(Db.noteTable,
-        Note(text: r'[{"insert":"food time\n"}]', date: today).toMap());
     await batch.commit(noResult: true);
   }
 }

@@ -91,17 +91,33 @@ class _EditPageState extends State<EditPage> {
               children: [
                 actions(context),
                 // https://www.youtube.com/watch?v=L2qG-qlhx-s&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=3
-                // TODO at top of screen back < button and save button and inbetween add also note date
+                // TODO at top of screen back < button and save button and inbetween add also editable note date
                 // TODO tags would be nice, e.g huvudvärk, or maybe just implement a good search feature that counts results words (if duplicated word in a day only take 1)
                 // TODO: move toolbar to bottom of screen
 
                 Expanded(
-                    child: QuillEditor.basic(
-                        configurations: QuillEditorConfigurations(
-                            controller: _controller, expands: true))),
+                    child: Padding(
+                  padding: const EdgeInsets.only(left: 10, right: 10),
+                  child: QuillEditor.basic(
+                      configurations: QuillEditorConfigurations(
+                          controller: _controller, expands: true)),
+                )),
                 textToolbar(),
               ],
             )));
+  }
+
+  Future navigateToPreviousPage(BuildContext context) async {
+    if (_hasUnsavedChanges) {
+      final shouldSave = await showDialog<bool>(
+          context: context, builder: (context) => const SaveChangesDialog());
+
+      if (shouldSave == true) {
+        await _onSave();
+      }
+    }
+
+    Navigator.pop(context, true);
   }
 
   Padding actions(BuildContext context) {
@@ -112,8 +128,7 @@ class _EditPageState extends State<EditPage> {
         children: [
           IconButton(
               iconSize: 30,
-              onPressed: () => Navigator.pop(
-                  context, true), // todo popup if changes were made
+              onPressed: () async => await navigateToPreviousPage(context),
               icon: const Icon(Icons.arrow_back)),
           saveButton()
         ],
@@ -146,15 +161,37 @@ class _EditPageState extends State<EditPage> {
           showInlineCode: false,
           multiRowsDisplay: false,
           controller: _controller,
-          // buttonOptions: QuillSimpleToolbarButtonOptions(
-          //     fontSize:
-          //         QuillToolbarFontSizeButtonOptions(itemHeight: 0))
-          // customButtons: [ // instead just have a custom button somewhere popup save sticky that doesnt disappear or whatever
-          //   QuillToolbarCustomButtonOptions(
-          //     icon: Icon(Icons.save),
-          //     onPressed: () => {},
-          //   ),
-          // ]
         ),
       );
+}
+
+class SaveChangesDialog extends StatelessWidget {
+  const SaveChangesDialog({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: const Text("Save changes?"),
+      children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
+          Container(
+            color: const Color.fromARGB(255, 231, 104, 93),
+            child: SimpleDialogOption(
+              child: const Text('ignore'),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+          ),
+          Container(
+            color: const Color.fromARGB(255, 144, 214, 223),
+            child: SimpleDialogOption(
+              child: const Text('Save'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          )
+        ])
+      ],
+    );
+  }
 }
