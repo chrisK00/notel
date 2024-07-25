@@ -155,8 +155,22 @@ class _HomePageState extends State<HomePage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Text(
-                DateFormat('d MMMM yyyy').format(n.date),
+              Column(
+                children: [
+                  Text(
+                    n.date.day.toString(),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                  Text(
+                    DateFormat('MMMM').format(n.date),
+                  ),
+                  // consider using a divider to display year like subtrack. less clutter for current year?
+                  Text(
+                    DateFormat('yyyy').format(n.date),
+                    style: const TextStyle(fontSize: 12),
+                  )
+                ],
               ),
               SizedBox(
                 width: 200,
