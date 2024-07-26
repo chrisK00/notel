@@ -116,6 +116,7 @@ class _EditPageState extends State<EditPage> {
       }
     }
 
+// TODO bättre hantera onSave so dont create new note on load?
     if (_controller.document.toPlainText().trim().isEmpty) {
       final db = await Db.open();
       db.delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
