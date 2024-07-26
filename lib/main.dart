@@ -123,8 +123,18 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
         body: Container(
           margin: const EdgeInsets.only(top: 40),
-          child:
-              Column(children: notes.map((n) => noteRow(context, n)).toList()),
+          child: Column(
+              children: notes
+                  .map((n) => Column(
+                        children: [
+                          noteRow(context, n),
+                          const Divider(
+                            height: 20,
+                            thickness: 0.5,
+                          )
+                        ],
+                      ))
+                  .toList()),
         ),
         bottomNavigationBar: Container(
           margin: const EdgeInsets.only(right: 10, bottom: 10),

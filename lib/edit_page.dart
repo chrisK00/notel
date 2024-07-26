@@ -20,7 +20,6 @@ class _EditPageState extends State<EditPage> {
 
   Future<void> _loadNote() async {
     final db = await Db.open();
-    // TODO untested code
     if (widget.noteId == null) {
       _note.id = await db.insert(Db.noteTable, _note.toMap());
       _controller.document.changes.listen(_onTextChanged);
@@ -115,6 +114,11 @@ class _EditPageState extends State<EditPage> {
       if (shouldSave == true) {
         await _onSave();
       }
+    }
+
+    if (_controller.document.toPlainText().trim().isEmpty) {
+      final db = await Db.open();
+      db.delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
     }
 
     Navigator.pop(context, true);
