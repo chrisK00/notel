@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
-
 import 'db.dart';
 import 'edit_page.dart';
 import 'settings_page.dart';
@@ -85,16 +84,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // TODO this will only contain a few lines of the actual note text, would be good to mb have some pagination on scroll aswell.
+  // used to save loaded notes. might be bad for memory if no pagination on scroll
+  String searchText = '';
+  final allNotes = <Note>[];
   final notes = <Note>[];
 
-  // TODO add orderby date
   Future<void> loadNotes(Database db) async {
     // TODO: hack
     if (notes.isNotEmpty) {
       return;
     }
-    log('loading notes');
+
     final rows = await db.rawQuery(r'''SELECT
         id,
         substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
@@ -118,23 +118,36 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    Db.open().then(loadNotes);
+    // hack LuL
+    // TODO LEARN ABOUT STATE MANAGEMENT SMH
+    if (allNotes.isEmpty) {
+      Db.open().then(loadNotes);
+      allNotes.addAll(notes);
+    } else {
+      if (searchText.isNotEmpty) {
+        onSearch(searchText);
+      } else {
+        Db.open().then(loadNotes);
+      }
+      // search if has searchTerm
+      // load all if no searchTerm
+    }
 
     return Scaffold(
         body: Container(
           margin: const EdgeInsets.only(top: 40),
-          child: Column(
-              children: notes
-                  .map((n) => Column(
-                        children: [
-                          noteRow(context, n),
-                          const Divider(
-                            height: 20,
-                            thickness: 0.5,
-                          )
-                        ],
-                      ))
-                  .toList()),
+          child: Column(children: [
+            searchBar(),
+            ...notes.map((n) => Column(
+                  children: [
+                    noteRow(context, n),
+                    const Divider(
+                      height: 15,
+                      thickness: 1,
+                    )
+                  ],
+                ))
+          ]),
         ),
         bottomNavigationBar: Container(
           margin: const EdgeInsets.only(right: 10, bottom: 10),
@@ -145,6 +158,46 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ));
+  }
+
+  TextField searchBar() {
+    return TextField(
+      decoration: const InputDecoration(
+          suffixIcon: Icon(Icons.search),
+          contentPadding: EdgeInsets.only(left: 10, top: 10)),
+      onChanged: onSearch,
+      onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
+    );
+  }
+
+  Future onSearch(value) async {
+    {
+      // TODO we want a X for clearing input?
+      // mb search is a popup buttton and then we just have a back button to hide search?
+
+      searchText = value.trim() ?? '';
+      if (value.trim().isEmpty) {
+        setState(() {
+          notes.clear();
+          notes.addAll(allNotes);
+        });
+        return;
+      }
+
+      final db = await Db.open();
+      final rows = await db.rawQuery(r'''SELECT Note.id
+FROM Note,
+     json_each(Note.text) AS json_data
+WHERE json_extract(json_data.value, '$.insert') LIKE ?
+ORDER BY Note.date DESC
+        ''', ['%$value%']);
+      final ids = rows.map((row) => row['id']).toList();
+
+      setState(() {
+        notes.clear();
+        notes.addAll(allNotes.where((note) => ids.contains(note.id)).toList());
+      });
+    }
   }
 
   GestureDetector noteRow(BuildContext context, Note n) {
@@ -161,7 +214,7 @@ class _HomePageState extends State<HomePage> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(5.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -174,6 +227,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                   Text(
                     DateFormat('MMMM').format(n.date),
+                    style: const TextStyle(fontSize: 13),
                   ),
                   // consider using a divider to display year like subtrack. less clutter for current year?
                   Text(
