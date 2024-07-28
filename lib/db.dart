@@ -1,10 +1,13 @@
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
-// i think this should be a singleton and DB should never be closed unless app is disposed
 class Db {
   static const databaseName = 'notel.db';
   static const noteTable = "Note";
+
+  // ignore: null_check_always_fails
+  static Database instance = null!;
+  // TODO remove comment static Database get instance => _instance!;
 
   static void _setupDatabase(Database db, int version) {
     db.execute("""CREATE TABLE Note(
@@ -12,21 +15,19 @@ class Db {
   )""");
   }
 
-// https://docs.flutter.dev/cookbook/persistence/sqlite
-  //https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
-  static Future<Database> open() async {
-    final database = await openDatabase(
+  // https://docs.flutter.dev/cookbook/persistence/sqlite
+  // https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
+  static Future initialize() async {
+    instance = await openDatabase(
         path.join(await getDatabasesPath(), databaseName),
         onCreate: _setupDatabase,
         version: 1);
-
-    return database;
   }
 
-  static Future<void> seed(Database db) async {
+  static Future<void> seed() async {
     final today = DateTime.now();
-    db.database.delete(noteTable);
-    final batch = db.batch();
+    instance.delete(noteTable);
+    final batch = instance.batch();
     batch.insert(
         Db.noteTable,
         Note(

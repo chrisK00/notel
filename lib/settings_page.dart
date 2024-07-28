@@ -32,8 +32,7 @@ class SettingsPage extends StatelessWidget {
 
   void exportNotes() async {
     // TODO add encryption
-    final db = await Db.open();
-    final notes = await db.query(Db.noteTable);
+    final notes = await Db.instance.query(Db.noteTable);
     final notesJson = jsonEncode(notes);
     Share.share(notesJson, subject: 'notes.json');
   }

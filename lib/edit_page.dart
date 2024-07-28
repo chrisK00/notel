@@ -19,12 +19,11 @@ class _EditPageState extends State<EditPage> {
   var _note = Note();
 
   Future<void> _loadNote() async {
-    final db = await Db.open();
     if (widget.noteId == null) {
-      _note.id = await db.insert(Db.noteTable, _note.toMap());
+      _note.id = await Db.instance.insert(Db.noteTable, _note.toMap());
       _controller.document.changes.listen(_onTextChanged);
     } else {
-      final getNoteResult = await db.query(Db.noteTable,
+      final getNoteResult = await Db.instance.query(Db.noteTable,
           where: "id= ?", whereArgs: [widget.noteId], limit: 1);
       _note = Note.fromMap(getNoteResult.first);
 
@@ -62,9 +61,8 @@ class _EditPageState extends State<EditPage> {
     setState(() => _hasUnsavedChanges = false);
     final json = jsonEncode(_controller.document.toDelta().toJson());
     // TODO: borde vara i ett repo
-    final db = await Db.open();
     try {
-      final changesMade = await db
+      final changesMade = await Db.instance
           .rawUpdate('UPDATE NOTE SET TEXT = ? WHERE id = ?', [json, _note.id]);
       log(changesMade.toString());
     } catch (e) {
@@ -118,11 +116,11 @@ class _EditPageState extends State<EditPage> {
 
 // TODO bättre hantera onSave so dont create new note on load?
     if (_controller.document.toPlainText().trim().isEmpty) {
-      final db = await Db.open();
-      db.delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
+      await Db.instance
+          .delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
     }
 
-    Navigator.pop(context, true);
+    Navigator.pop(context);
   }
 
   Padding actions(BuildContext context) {
@@ -185,14 +183,14 @@ class SaveChangesDialog extends StatelessWidget {
             color: const Color.fromARGB(255, 231, 104, 93),
             child: SimpleDialogOption(
               child: const Text('ignore'),
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
           Container(
             color: const Color.fromARGB(255, 144, 214, 223),
             child: SimpleDialogOption(
               child: const Text('Save'),
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(context),
             ),
           )
         ])
