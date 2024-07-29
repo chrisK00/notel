@@ -183,14 +183,14 @@ class SaveChangesDialog extends StatelessWidget {
             color: const Color.fromARGB(255, 231, 104, 93),
             child: SimpleDialogOption(
               child: const Text('ignore'),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, false),
             ),
           ),
           Container(
             color: const Color.fromARGB(255, 144, 214, 223),
             child: SimpleDialogOption(
               child: const Text('Save'),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(context, true),
             ),
           )
         ])

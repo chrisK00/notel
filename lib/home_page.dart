@@ -34,23 +34,20 @@ class _HomePageState extends State<HomePage> {
     loadNotes();
   }
 
-// TODO går just nu inte att scrolla listan, blir overflow
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         body: Container(
-          margin: const EdgeInsets.only(top: 40),
+          margin: const EdgeInsets.only(top: 35),
           child: Column(children: [
-            searchBar(),
-            ...notes.map((n) => Column(
-                  children: [
-                    noteRow(context, n),
-                    const Divider(
-                      height: 15,
-                      thickness: 1,
-                    )
-                  ],
-                ))
+            Container(child: searchBar()),
+            Expanded(
+              child: ListView.separated(
+                  itemBuilder: (context, index) =>
+                      noteRow(context, notes[index]),
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemCount: notes.length),
+            )
           ]),
         ),
         bottomNavigationBar: Container(
@@ -64,7 +61,7 @@ class _HomePageState extends State<HomePage> {
         ));
   }
 
-  TextField searchBar() {
+  Widget searchBar() {
     return TextField(
       controller: _textController,
       decoration: const InputDecoration(
@@ -102,6 +99,7 @@ class _HomePageState extends State<HomePage> {
 
   // TODO rätt väg är Provider, with shared list of Notes. When creating a note we just push the created note. so that when searching or scrolling we maintain our position? idk have to rethink the search logic
   // alternativet är ju någon form av pagination när vi har en mer scrollable lazy loaded list idk får se
+  // kan man ba ersätta den som ändrats eller är de fel? kanske så är enklast shared provider of notes kan temp skita i pagination o sånt. får kolla chat gpt etc../se hur ska göra, kanske att edit skickar tillbaks noten och så kan vi i home ba edita?
   void reloadPageData() {
     loadNotes();
     setState(() => _textController.text = '');
