@@ -105,6 +105,7 @@ class _HomePageState extends State<HomePage> {
     setState(() => _textController.text = '');
   }
 
+// TODO kanske borde highlighta på ngt sätt om det är dagens note? (today) eller liknande bredvid datum/någon specifik färg elr ngt
   GestureDetector noteRow(BuildContext context, Note n) {
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
