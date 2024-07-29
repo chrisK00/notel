@@ -149,6 +149,7 @@ class _EditPageState extends State<EditPage> {
     );
   }
 
+// för insert current time kan ha en custom knapp i edit quill toolbar som simply trycker in texten/delta i documentet. kanske man vill ha det i bold style. den kanske ska runda till xx:x0 istället för exakt exakt? skit i det temporärt lol övertänker
   QuillSimpleToolbar textToolbar() => QuillToolbar.simple(
         configurations: QuillSimpleToolbarConfigurations(
           showFontFamily: false,
