@@ -105,7 +105,6 @@ class _HomePageState extends State<HomePage> {
     setState(() => _textController.text = '');
   }
 
-// TODO kanske borde highlighta på ngt sätt om det är dagens note? (today) eller liknande bredvid datum/någon specifik färg elr ngt
   GestureDetector noteRow(BuildContext context, Note n) {
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -114,37 +113,42 @@ class _HomePageState extends State<HomePage> {
               MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
           reloadPageData();
         },
-        child: Padding(
-          padding: const EdgeInsets.all(5.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Column(
-                children: [
-                  Text(
-                    n.date.day.toString(),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                  Text(
-                    DateFormat('MMMM').format(n.date),
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  // consider using a divider to display year like subtrack. less clutter for current year?
-                  Text(
-                    DateFormat('yyyy').format(n.date),
-                    style: const TextStyle(fontSize: 12),
-                  )
-                ],
-              ),
-              SizedBox(
-                width: 200,
-                child: Text(
-                  n.text,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column
+            Column(
+              children: [
+                Text(
+                  DateTime.now().isSameDate(n.date) ? 'today' : '',
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold),
                 ),
+                Text(
+                  n.date.day.toString(),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 20),
+                ),
+                Text(
+                  DateFormat('MMMM').format(n.date),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                // consider using a divider to display year like subtrack. less clutter for current year?
+                Text(
+                  DateFormat('yyyy').format(n.date),
+                  style: const TextStyle(fontSize: 12),
+                )
+              ],
+            ),
+            SizedBox(
+              width: 250,
+              child: Text(
+                n.text,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 3,
               ),
-            ],
-          ),
+            ),
+          ],
         ));
   }
 
@@ -164,8 +168,15 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+extension DateOnlyCompare on DateTime {
+  bool isSameDate(DateTime other) {
+    return year == other.year && month == other.month && day == other.day;
+  }
+}
+
 class HomePageRepository {
   static Future<Iterable<Note>> loadNotes() async {
+    // todo should select 36 chars from every insert not just first insert
     final rows = await Db.instance.rawQuery(r'''SELECT
         id,
         substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
@@ -173,17 +184,8 @@ class HomePageRepository {
         FROM NOTE
         ORDER BY date DESC
         ''');
-    final mappedRows = rows.map((n) {
-      final note = Note.fromMap(n);
-      log('length ${note.text.length}');
-      if (note.text.length == 35) {
-        // todo this wont account for the case where the full note is actually 35 chars
-        note.text = "${note.text.substring(0, note.text.length - 3)}...";
-      }
-      return note;
-    });
 
-    return mappedRows;
+    return rows.map(Note.fromMap);
   }
 
   static Future<Iterable<int>> findNoteIdsByText(text) async {

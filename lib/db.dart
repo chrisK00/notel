@@ -23,26 +23,6 @@ class Db {
         onCreate: _setupDatabase,
         version: 1);
   }
-
-  static Future<void> seed() async {
-    final today = DateTime.now();
-    instance.delete(noteTable);
-    final batch = instance.batch();
-    batch.insert(
-        Db.noteTable,
-        Note(
-                text: r'[{"insert":"food time\n"}]',
-                date: DateTime(today.year, 1, 1))
-            .toMap());
-    batch.insert(
-        Db.noteTable,
-        Note(
-                text:
-                    r'[{"insert":"10:00 awake finally\ntime to eat n poo. Yummy\n"}]',
-                date: today)
-            .toMap());
-    await batch.commit(noResult: true);
-  }
 }
 
 class Note {

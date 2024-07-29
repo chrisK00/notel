@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:notel/db_seed.dart';
 import 'db.dart';
 import 'home_page.dart';
 import 'settings_page.dart';
@@ -11,7 +12,7 @@ void main() async {
   await Db.initialize();
   if (kDebugMode) {
     log('Db seed');
-    await Db.seed();
+    await DebugUtil.seedDatabase();
   }
   runApp(const App());
 }
