@@ -1,14 +1,14 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:notel/db.dart';
 import 'package:share_plus/share_plus.dart';
 
 class SettingsPage extends StatelessWidget {
+  const SettingsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
     return Container(
       margin: const EdgeInsets.only(top: 30),
       alignment: Alignment.center,

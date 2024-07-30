@@ -7,7 +7,6 @@ class Db {
 
   // ignore: null_check_always_fails
   static Database instance = null!;
-  // TODO remove comment static Database get instance => _instance!;
 
   static void _setupDatabase(Database db, int version) {
     db.execute("""CREATE TABLE Note(

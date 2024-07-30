@@ -63,3 +63,12 @@ class _AppState extends State<App> {
     );
   }
 }
+
+// todo om user backar med deras back button vad blir resultatet?null?
+class EditPageResult {
+  final EditPageOperation operation;
+  final int noteId;
+  EditPageResult(this.operation, this.noteId);
+}
+
+enum EditPageOperation { remove, update, add }

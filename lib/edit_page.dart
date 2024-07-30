@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:notel/db.dart';
+import 'package:notel/main.dart';
 
 class EditPage extends StatefulWidget {
   const EditPage({super.key, this.noteId});
@@ -17,11 +18,13 @@ class _EditPageState extends State<EditPage> {
   final _controller = QuillController.basic();
   var _hasUnsavedChanges = false;
   var _note = Note();
+  bool _isNewNote = false;
 
   Future<void> _loadNote() async {
     if (widget.noteId == null) {
       _note.id = await Db.instance.insert(Db.noteTable, _note.toMap());
       _controller.document.changes.listen(_onTextChanged);
+      _isNewNote = true;
     } else {
       final getNoteResult = await Db.instance.query(Db.noteTable,
           where: "id= ?", whereArgs: [widget.noteId], limit: 1);
@@ -115,12 +118,19 @@ class _EditPageState extends State<EditPage> {
     }
 
 // TODO bättre hantera onSave so dont create new note on load?
+// TODO borde ta bort om tom, why save above etc.. better handling = slipper reload i home page etc...
     if (_controller.document.toPlainText().trim().isEmpty) {
       await Db.instance
           .delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
+      // TODO think this is really bad lol. should use a shared notes state but NOT PROVIDER package.
+      Navigator.pop(
+          context, EditPageResult(EditPageOperation.remove, _note.id!));
+    } else if (_isNewNote) {
+      Navigator.pop(context, EditPageResult(EditPageOperation.add, _note.id!));
+    } else {
+      Navigator.pop(
+          context, EditPageResult(EditPageOperation.update, _note.id!));
     }
-
-    Navigator.pop(context);
   }
 
   Padding actions(BuildContext context) {

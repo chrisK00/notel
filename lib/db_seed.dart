@@ -25,6 +25,15 @@ class DebugUtil {
                     r'[{"insert":"10:30 fk i am zo energy ball attack party popper ok its ok\ntime to eat n poo. Yummy\n"}]',
                 date: DateTime(today.year, 2, 2))
             .toMap());
+
+    for (int i = 1; i < 8; i++) {
+      batch.insert(
+          Db.noteTable,
+          Note(
+                  text: '[{"insert":"hi $i\\n"}]',
+                  date: DateTime(today.year, 3, i))
+              .toMap());
+    }
     await batch.commit(noResult: true);
   }
 }
