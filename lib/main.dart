@@ -1,10 +1,9 @@
 import 'dart:developer';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:notel/db_seed.dart';
-import 'db.dart';
-import 'home_page.dart';
+import 'package:notel/utils/db_seed.dart';
+import 'infrastructure/db.dart';
+import 'home_page/home_page.dart';
 import 'settings_page.dart';
 
 void main() async {
@@ -63,12 +62,3 @@ class _AppState extends State<App> {
     );
   }
 }
-
-// todo om user backar med deras back button vad blir resultatet?null?. kan ju dock skita i detta när fixat callbacks
-class EditPageResult {
-  final EditPageOperation operation;
-  final int noteId;
-  EditPageResult(this.operation, this.noteId);
-}
-
-enum EditPageOperation { remove, update, add }

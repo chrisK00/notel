@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:notel/main.dart';
-import 'db.dart';
-import 'edit_page.dart';
+import 'package:notel/utils/extensions.dart';
+import '../infrastructure/db.dart';
+import '../edit_page/edit_page.dart';
+import 'home_page_repository.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,7 +13,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // used to save loaded notes. might be bad for memory if no pagination on scroll
   String searchText = '';
   final _searchTextController = TextEditingController();
 
@@ -87,8 +87,6 @@ class _HomePageState extends State<HomePage> {
 
   Future onSearch(value) async {
     {
-      // TODO we want a X for clearing input?
-      // mb search is a popup buttton and then we just have a back button to hide search?
       if (allNotes.isEmpty) {
         allNotes.addAll(notes);
       }
@@ -107,10 +105,6 @@ class _HomePageState extends State<HomePage> {
       });
     }
   }
-
-  // TODO rätt väg är state ´manager, with shared list of Notes. When creating a note we just push the created note. so that when searching or scrolling we maintain our position? idk have to rethink the search logic
-  // alternativet är ju någon form av pagination när vi har en mer scrollable lazy loaded list idk får se
-  // kan man ba ersätta den som ändrats eller är de fel? kanske så är enklast shared provider of notes kan temp skita i pagination o sånt. får kolla chat gpt etc../se hur ska göra, kanske att edit skickar tillbaks noten och så kan vi i home ba edita?
 
   void updateNoteInList(List<Note> notes, int noteId, String newText) {
     final noteIndex = notes.indexWhere((n) => n.id == noteId);
@@ -182,7 +176,6 @@ class _HomePageState extends State<HomePage> {
                   DateFormat('MMMM').format(n.date),
                   style: const TextStyle(fontSize: 13),
                 ),
-                // consider using a divider to display year like subtrack. less clutter for current year?
                 Text(
                   DateFormat('yyyy').format(n.date),
                   style: const TextStyle(fontSize: 12),
@@ -213,53 +206,5 @@ class _HomePageState extends State<HomePage> {
         size: 40,
       ),
     );
-  }
-}
-
-extension DateTimeExtensions on DateTime {
-  bool isSameDate(DateTime other) =>
-      year == other.year && month == other.month && day == other.day;
-}
-
-extension StringExtensions on String {
-  bool isEmptyOrWhitespace() => trim().isEmpty;
-}
-
-class HomePageRepository {
-  static Future<Iterable<Note>> loadNotes() async {
-    // todo should select 36 chars from every insert not just first insert
-    final rows = await Db.instance.rawQuery(r'''SELECT
-        id,
-        substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
-        date
-        FROM NOTE
-        ORDER BY date DESC
-        ''');
-
-    return rows.map(Note.fromMap);
-  }
-
-  static Future<Note> loadNote(int noteId) async {
-    final rows = await Db.instance.rawQuery(r'''SELECT
-        id,
-        substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
-        date
-        FROM NOTE
-        WHERE id = ?
-        ''', [noteId]);
-
-    return rows.map(Note.fromMap).first;
-  }
-
-  static Future<Iterable<int>> findNoteIdsByText(text) async {
-    {
-      final rows = await Db.instance.rawQuery(r'''SELECT Note.id
-FROM Note,
-     json_each(Note.text) AS json_data
-WHERE json_extract(json_data.value, '$.insert') LIKE ?
-ORDER BY Note.date DESC
-        ''', ['%$text%']);
-      return rows.map((row) => int.parse(row['id'].toString()));
-    }
   }
 }

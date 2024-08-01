@@ -14,8 +14,6 @@ class Db {
   )""");
   }
 
-  // https://docs.flutter.dev/cookbook/persistence/sqlite
-  // https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
   static Future initialize() async {
     instance = await openDatabase(
         path.join(await getDatabasesPath(), databaseName),
@@ -42,7 +40,7 @@ class Note {
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
       id: map['id'],
-      text: map['text'] ?? '', // should never be null need to fix
+      text: map['text'] ?? '',
       date: DateTime.parse(map['date']),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:notel/db.dart';
+import 'package:notel/infrastructure/db.dart';
 
 class DebugUtil {
   static Future<void> seedDatabase() async {
