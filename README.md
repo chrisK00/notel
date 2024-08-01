@@ -1,5 +1,10 @@
 # notel
 
+
+### Planned Features 🔥
+- Stats page alternatively stats button when searching for a word. E.g headache shows how many notes it was in for the last month/week
+- Add automated tests
+
 ## Getting Started
 //the application state is not lost during the reload. To reset the state, use hot restart instead.
 

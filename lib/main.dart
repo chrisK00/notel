@@ -64,7 +64,7 @@ class _AppState extends State<App> {
   }
 }
 
-// todo om user backar med deras back button vad blir resultatet?null?
+// todo om user backar med deras back button vad blir resultatet?null?. kan ju dock skita i detta när fixat callbacks
 class EditPageResult {
   final EditPageOperation operation;
   final int noteId;

@@ -11,8 +11,6 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-// TODO use callbacks instead of result https://www.dhiwise.com/post/how-to-implement-voidcallback-effectively-in-flutter-project
-
 class _HomePageState extends State<HomePage> {
   // used to save loaded notes. might be bad for memory if no pagination on scroll
   String searchText = '';
