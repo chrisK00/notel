@@ -113,48 +113,47 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void handleEditPageResult(EditPageResult result) {
-    switch (result.operation) {
-      case EditPageOperation.remove:
-        setState(() {
-          notes.removeWhere((n) => n.id == result.noteId);
-          allNotes.removeWhere((n) => n.id == result.noteId);
-        });
-        break;
-      case EditPageOperation.update:
-        HomePageRepository.loadNote(result.noteId).then((updatedNote) {
-          setState(() {
-            updateNoteInList(notes, result.noteId, updatedNote.text);
-            updateNoteInList(allNotes, result.noteId, updatedNote.text);
+  EditPage createEditNotePage(int noteId) => EditPage(
+        noteId: noteId,
+        onUpdate: () {
+          HomePageRepository.loadNote(noteId).then((updatedNote) {
+            setState(() {
+              updateNoteInList(notes, noteId, updatedNote.text);
+              updateNoteInList(allNotes, noteId, updatedNote.text);
+            });
           });
-        });
-        break;
-      case EditPageOperation.add:
-        HomePageRepository.loadNote(result.noteId).then((updatedNote) {
+        },
+        onRemove: () {
           setState(() {
-            // hack
-            if (allNotes.length < notes.length) {
-              allNotes.addAll(notes);
-            }
+            notes.removeWhere((n) => n.id == noteId);
+            allNotes.removeWhere((n) => n.id == noteId);
+          });
+        },
+      );
 
-            clearSearch();
-            notes.add(updatedNote);
-            notes.sort((a, b) => b.date.compareTo(a.date));
+  EditPage createNewNotePage() => EditPage(
+        onCreate: (noteId) {
+          HomePageRepository.loadNote(noteId).then((updatedNote) {
+            setState(() {
+              // hack
+              if (allNotes.length < notes.length) {
+                allNotes.addAll(notes);
+              }
+
+              clearSearch();
+              notes.add(updatedNote);
+              notes.sort((a, b) => b.date.compareTo(a.date));
+            });
           });
-        });
-        break;
-      default:
-    }
-  }
+        },
+      );
 
   GestureDetector noteRow(BuildContext context, Note n) {
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () async {
-          final result = await Navigator.push(context,
-              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
-
-          handleEditPageResult(result);
+          await Navigator.push(context,
+              MaterialPageRoute(builder: (c) => createEditNotePage(n.id!)));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -197,9 +196,8 @@ class _HomePageState extends State<HomePage> {
   FloatingActionButton addNoteButton(BuildContext context) {
     return FloatingActionButton(
       onPressed: () async {
-        final result = await Navigator.push(
-            context, MaterialPageRoute(builder: (c) => const EditPage()));
-        handleEditPageResult(result);
+        await Navigator.push(
+            context, MaterialPageRoute(builder: (c) => createNewNotePage()));
       },
       child: const Icon(
         Icons.add,

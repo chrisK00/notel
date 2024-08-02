@@ -6,18 +6,14 @@ import 'package:notel/infrastructure/db.dart';
 import '../dialogs/save_changes_dialog.dart';
 import 'note_text_toolbar.dart';
 
-// todo om user backar med deras back button vad blir resultatet?null?. kan ju dock skita i detta när fixat callbacks alt state
-class EditPageResult {
-  final EditPageOperation operation;
-  final int noteId;
-  EditPageResult(this.operation, this.noteId);
-}
-
-enum EditPageOperation { remove, update, add }
-
 class EditPage extends StatefulWidget {
-  const EditPage({super.key, this.noteId});
+  const EditPage(
+      {super.key, this.noteId, this.onUpdate, this.onCreate, this.onRemove});
+
   final int? noteId;
+  final Function? onRemove;
+  final Function? onUpdate;
+  final Function(int)? onCreate;
 
   @override
   State<StatefulWidget> createState() => _EditPageState();
@@ -117,13 +113,14 @@ class _EditPageState extends State<EditPage> {
     if (_controller.document.toPlainText().trim().isEmpty) {
       await Db.instance
           .delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
-      Navigator.pop(
-          context, EditPageResult(EditPageOperation.remove, _note.id!));
+      widget.onRemove?.call();
+      Navigator.pop(context);
     } else if (_isNewNote) {
-      Navigator.pop(context, EditPageResult(EditPageOperation.add, _note.id!));
+      widget.onCreate?.call(_note.id!);
+      Navigator.pop(context);
     } else {
-      Navigator.pop(
-          context, EditPageResult(EditPageOperation.update, _note.id!));
+      widget.onUpdate?.call();
+      Navigator.pop(context);
     }
   }
 
