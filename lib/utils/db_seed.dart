@@ -26,11 +26,11 @@ class DebugUtil {
                 date: DateTime(today.year, 2, 2))
             .toMap());
 
-    for (int i = 1; i < 8; i++) {
+    for (int i = 1; i < 10; i++) {
       batch.insert(
           Db.noteTable,
           Note(
-                  text: '[{"insert":"hi $i\\n"}]',
+                  text: '[{"insert":"hi $i\\n energy pooper\\n"}]',
                   date: DateTime(today.year, 3, i))
               .toMap());
     }

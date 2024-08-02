@@ -17,7 +17,7 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - build and deploy app
 https://www.youtube.com/watch?v=ZnufaryH43s
 - Consider using another package than sqflite for DB
-- prestandamätningar och stresstest e.g väldigt många notes, eller en väldigt stor note text
+- prestandamätningar?
 - tänk om kring cachad allnotes och notes. kanske istället använd riktig cache lol/state. alternativet är ju implement database searching etc.. de kanske efter bytt DB till bättre prestanda
 - consider using a divider to display year like subtrack. less clutter for current year? mb only show year for previous year widgets?
 - Encrypt exported notes
