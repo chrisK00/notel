@@ -1,7 +1,4 @@
-# notel
-
-
-### Up for grabs 🔥
+## Up for grabs 🔥
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 - Förbättra navigatetopreviouspage i Edit page
@@ -25,8 +22,12 @@ https://www.youtube.com/watch?v=ZnufaryH43s
 - consider using a divider to display year like subtrack. less clutter for current year? mb only show year for previous year widgets?
 - Encrypt exported notes
 - Export/Import maybe add store in gdrive support if safe without backend?
+- smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit. insights page
+- export reminder
+- log note reminder notification 
+- dark+light theme
 
-### Guides
+## Guides
 - flutter quill https://github.com/singerdmx/flutter-quill/blob/master/doc/code_introduction.md
 - sqflite https://docs.flutter.dev/cookbook/persistence/sqlite
 - sqflite https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
