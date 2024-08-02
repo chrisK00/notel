@@ -1,7 +1,4 @@
-# notel
-
-
-### Up for grabs 🔥
+## Up for grabs 🔥
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 - Förbättra navigatetopreviouspage i Edit page
@@ -38,6 +35,7 @@ https://www.youtube.com/watch?v=ZnufaryH43s
 - sqflite https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
 - sqflite https://blog.stackademic.com/efficient-sqlite-database-operations-in-flutter-using-sqflite-643034389a4c
 - Notes app https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
+- smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit
 
 ## Getting Started
 //the application state is not lost during the reload. To reset the state, use hot restart instead.
