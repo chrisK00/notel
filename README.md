@@ -1,8 +1,9 @@
 ## Up for grabs 🔥
+- Fixa search så egen tab/page fast ska ej märkas av användare ksk?? idk hur annars lösa att home page ska alltid laddas om utan o ha en massa hack... vill helst slippa onupdate o sånt, alternativet är state management.
 - Refaktorera db kod till repo
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
-- Hitta ny DB
+<!-- - Hitta ny DB -->
 - fixa note.id så ej nullable...
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
@@ -53,7 +54,9 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - Run `flutter build apk --split-per-abi`
 - Connect Android device to pc
 - Modify the device id and run
- `flutter install --device-id 2107113SG --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk`
+ ```csharp
+ flutter install --device-id 2107113SG --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
+ ```
  ```csharp
  flutter install --device-id  SM S926B --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
  ```

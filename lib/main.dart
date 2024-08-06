@@ -1,13 +1,21 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:notel/utils/db_seed.dart';
+
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'infrastructure/db.dart';
 import 'home_page/home_page.dart';
 import 'settings_page/settings_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (Platform.isWindows) {
+    sqfliteFfiInit();
+  }
+
+  databaseFactory = databaseFactoryFfi;
   await Db.initialize();
   if (kDebugMode) {
     log('Db seed');
