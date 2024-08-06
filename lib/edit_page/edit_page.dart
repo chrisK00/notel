@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
-import 'package:notel/infrastructure/db.dart';
 import '../dialogs/save_changes_dialog.dart';
+import '../infrastructure/note.dart';
 import 'edit_page_repository.dart';
 import 'note_text_toolbar.dart';
 
@@ -42,7 +42,7 @@ class _EditPageState extends State<EditPage> {
   }
 
   Future createNote() async {
-    _note.id = await Db.instance.insert(Db.noteTable, _note.toMap());
+    _note.id = await EditPageRepository.createNote(_note);
     _controller.document.changes.listen(_onTextChanged);
     _isNewNote = true;
   }
@@ -73,8 +73,7 @@ class _EditPageState extends State<EditPage> {
     setState(() => _hasUnsavedChanges = false);
     final json = jsonEncode(_controller.document.toDelta().toJson());
     try {
-      final changesMade = await Db.instance.update(Db.noteTable, {'TEXT': json},
-          where: 'id = ?', whereArgs: [_note.id]);
+      final changesMade = await EditPageRepository.updateNote(_note.id!, json);
       log('Updated rows $changesMade');
     } catch (e) {
       setState(() => _hasUnsavedChanges = true);
@@ -129,8 +128,7 @@ class _EditPageState extends State<EditPage> {
     }
 
     if (_controller.document.toPlainText().trim().isEmpty) {
-      await Db.instance
-          .delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
+      await EditPageRepository.deleteNote(_note.id!);
       widget.onRemove?.call();
     } else if (_isNewNote) {
       widget.onCreate?.call(_note.id!);

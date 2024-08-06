@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:notel/utils/db_seed.dart';
 import 'infrastructure/db.dart';
 import 'home_page/home_page.dart';
-import 'settings_page.dart';
+import 'settings_page/settings_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

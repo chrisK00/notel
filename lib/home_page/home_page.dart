@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notel/utils/extensions.dart';
-import '../infrastructure/db.dart';
 import '../edit_page/edit_page.dart';
+import '../infrastructure/note.dart';
 import 'home_page_repository.dart';
 
 class HomePage extends StatefulWidget {

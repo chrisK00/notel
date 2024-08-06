@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:notel/infrastructure/db.dart';
 import 'package:share_plus/share_plus.dart';
+
+import 'settings_page_repository.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -30,7 +31,7 @@ class SettingsPage extends StatelessWidget {
   }
 
   void exportNotes() async {
-    final notes = await Db.instance.query(Db.noteTable);
+    final notes = await SettingsPageRepository.getNotes();
     final notesJson = jsonEncode(notes);
     Share.share(notesJson, subject: 'notes.json');
   }

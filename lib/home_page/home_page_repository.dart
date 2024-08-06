@@ -1,5 +1,7 @@
 import 'package:notel/infrastructure/db.dart';
 
+import '../infrastructure/note.dart';
+
 class HomePageRepository {
   static Future<Iterable<Note>> loadNotes() async {
     // TODO should select 36 chars from every insert not just first insert. lösning finns ju nedanför

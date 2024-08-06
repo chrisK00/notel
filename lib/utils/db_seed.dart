@@ -1,5 +1,7 @@
 import 'package:notel/infrastructure/db.dart';
 
+import '../infrastructure/note.dart';
+
 class DebugUtil {
   static Future<void> seedDatabase() async {
     final today = DateTime.now();
