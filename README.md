@@ -1,6 +1,6 @@
 ## Up for grabs 🔥
 - ta ner lite UI är för långt upp
-<!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved - fördel dock att man måste dubbelklicka back button
+<!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
 - Hitta ny DB
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
@@ -52,6 +52,9 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - Connect Android device to pc
 - Modify the device id and run
  `flutter install --device-id 2107113SG --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk`
+ ```csharp
+ flutter install --device-id  SM S926B --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk
+ ```
  samsung device id: SM S926B
  elma device id: 2107113SG
 ### notes
