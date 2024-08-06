@@ -1,4 +1,7 @@
 ## Up for grabs 🔥
+- ta ner lite UI är för långt upp
+- fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab
+- Hitta ny DB
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 - Förbättra navigatetopreviouspage i Edit page
@@ -20,8 +23,6 @@ class DateOnly
   @override  String toString() => '$year-$month-$day';
 - Dispose DB connection if required on app exit
 https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit-flutter
-- build and deploy app
-https://www.youtube.com/watch?v=ZnufaryH43s
 - Split editpage into create and edit page
 - Consider using another package than sqflite for DB
 - prestandamätningar?
@@ -33,6 +34,8 @@ https://www.youtube.com/watch?v=ZnufaryH43s
 - export reminder
 - log note reminder notification 
 - dark+light theme
+- how to access sqlite database in emulator
+- Proper deploy https://docs.flutter.dev/deployment/android
 
 ## Guides
 - flutter quill https://github.com/singerdmx/flutter-quill/blob/master/doc/code_introduction.md
@@ -41,6 +44,16 @@ https://www.youtube.com/watch?v=ZnufaryH43s
 - sqflite https://blog.stackademic.com/efficient-sqlite-database-operations-in-flutter-using-sqflite-643034389a4c
 - Notes app https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 
+### How to run
+- Run `flutter run`. After making changes click on terminal tab and press R to hot reload. Alternatively just run the app using `F5`
+
+### How to deploy
+- Run `flutter build apk --split-per-abi`
+- Connect Android device to pc
+- Modify the device id and run
+ `flutter install --device-id 2107113SG --use-application-binary=build\app\outputs\flutter-apk\app-arm64-v8a-release.apk`
+ samsung device id: SM S926B
+ elma device id: 2107113SG
 ### notes
   // static Future<Note?> getNoteByDate(DateTime date) async {
   //   final getNoteResult = await Db.instance.query(Db.noteTable,
