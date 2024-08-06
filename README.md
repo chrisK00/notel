@@ -1,4 +1,5 @@
 ## Up for grabs 🔥
+- Refaktorera db kod till repo
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
 - Hitta ny DB
