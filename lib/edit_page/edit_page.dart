@@ -89,32 +89,42 @@ class _EditPageState extends State<EditPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        backgroundColor: const Color.fromARGB(255, 224, 234, 238),
-        body: Container(
-            margin: const EdgeInsets.only(top: 30),
-            child: Column(
-              children: [
-                actions(context),
-                Expanded(
-                    child: Padding(
-                  padding: const EdgeInsets.only(left: 10, right: 10),
-                  child: QuillEditor.basic(
-                      configurations: QuillEditorConfigurations(
-                          controller: _controller, expands: true)),
-                )),
-                NoteTextToolbar(controller: _controller),
-              ],
-            )));
+    return PopScope(
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          navigateToPreviousPage(context, didPop = true);
+        }
+      },
+      child: Scaffold(
+          backgroundColor: const Color.fromARGB(255, 224, 234, 238),
+          body: Container(
+              margin: const EdgeInsets.only(top: 30),
+              child: Column(
+                children: [
+                  actions(context),
+                  Expanded(
+                      child: Padding(
+                    padding: const EdgeInsets.only(left: 10, right: 10),
+                    child: QuillEditor.basic(
+                        configurations: QuillEditorConfigurations(
+                            controller: _controller, expands: true)),
+                  )),
+                  NoteTextToolbar(controller: _controller),
+                ],
+              ))),
+    );
   }
 
-  Future navigateToPreviousPage(BuildContext context) async {
-    if (_hasUnsavedChanges) {
-      final shouldSave = await showDialog<bool>(
-          context: context, builder: (context) => const SaveChangesDialog());
+  Future navigateToPreviousPage(BuildContext context,
+      [bool didPop = false]) async {
+    if (!didPop) {
+      if (_hasUnsavedChanges) {
+        final shouldSave = await showDialog<bool>(
+            context: context, builder: (context) => const SaveChangesDialog());
 
-      if (shouldSave == true) {
-        await _onSave();
+        if (shouldSave == true) {
+          await _onSave();
+        }
       }
     }
 
@@ -122,12 +132,13 @@ class _EditPageState extends State<EditPage> {
       await Db.instance
           .delete(Db.noteTable, where: 'id = ?', whereArgs: [_note.id]);
       widget.onRemove?.call();
-      Navigator.pop(context);
     } else if (_isNewNote) {
       widget.onCreate?.call(_note.id!);
-      Navigator.pop(context);
     } else {
       widget.onUpdate?.call();
+    }
+
+    if (!didPop) {
       Navigator.pop(context);
     }
   }
