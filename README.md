@@ -12,10 +12,17 @@ https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5Xrvdavg
 https://www.scaler.com/topics/pagination-in-flutter/
 https://medium.com/@m1nori/flutter-pagination-without-any-packages-8c24095555b3
 https://pub.dev/packages/infinite_scroll_pagination/example
+- investigate DateOnly om man vill använda den istället / om det finns något alternativ. om man då inte vill veta tidpunkt note skapades
+  DateOnly getDateOnly() => DateOnly(year, month, day);
+class DateOnly
+  int year; int month; int day;
+  DateOnly(this.year, this.month, this.day);
+  @override  String toString() => '$year-$month-$day';
 - Dispose DB connection if required on app exit
 https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit-flutter
 - build and deploy app
 https://www.youtube.com/watch?v=ZnufaryH43s
+- Split editpage into create and edit page
 - Consider using another package than sqflite for DB
 - prestandamätningar?
 - tänk om kring cachad allnotes och notes. kanske istället använd riktig cache lol/state. alternativet är ju implement database searching etc.. de kanske efter bytt DB till bättre prestanda
@@ -33,6 +40,14 @@ https://www.youtube.com/watch?v=ZnufaryH43s
 - sqflite https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
 - sqflite https://blog.stackademic.com/efficient-sqlite-database-operations-in-flutter-using-sqflite-643034389a4c
 - Notes app https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
+
+### notes
+  // static Future<Note?> getNoteByDate(DateTime date) async {
+  //   final getNoteResult = await Db.instance.query(Db.noteTable,
+  //       where: "date(date)= date(?)", whereArgs: [date.toString()], limit: 1);
+
+  //   return getNoteResult.isEmpty ? null : Note.fromMap(getNoteResult.first);
+  // }
 
 ## Getting Started
 //the application state is not lost during the reload. To reset the state, use hot restart instead.

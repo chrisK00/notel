@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:notel/infrastructure/db.dart';
 import '../dialogs/save_changes_dialog.dart';
+import 'edit_page_repository.dart';
 import 'note_text_toolbar.dart';
 
 class EditPage extends StatefulWidget {
@@ -25,26 +26,33 @@ class _EditPageState extends State<EditPage> {
   var _note = Note();
   bool _isNewNote = false;
 
-  Future<void> _loadNote() async {
-    if (widget.noteId == null) {
-      _note.id = await Db.instance.insert(Db.noteTable, _note.toMap());
+  Future initExistingNote(Note note) async {
+    _note = note;
+
+    if (_note.text.isEmpty) {
       _controller.document.changes.listen(_onTextChanged);
-      _isNewNote = true;
+      return;
+    }
+
+    final json = jsonDecode(_note.text);
+    setState(() {
+      _controller.document = Document.fromJson(json);
+      _controller.document.changes.listen(_onTextChanged);
+    });
+  }
+
+  Future createNote() async {
+    _note.id = await Db.instance.insert(Db.noteTable, _note.toMap());
+    _controller.document.changes.listen(_onTextChanged);
+    _isNewNote = true;
+  }
+
+  Future<void> initNote() async {
+    if (widget.noteId == null) {
+      await createNote();
     } else {
-      final getNoteResult = await Db.instance.query(Db.noteTable,
-          where: "id= ?", whereArgs: [widget.noteId], limit: 1);
-      _note = Note.fromMap(getNoteResult.first);
-
-      if (_note.text.isEmpty) {
-        _controller.document.changes.listen(_onTextChanged);
-        return;
-      }
-
-      final json = jsonDecode(_note.text);
-      setState(() {
-        _controller.document = Document.fromJson(json);
-        _controller.document.changes.listen(_onTextChanged);
-      });
+      await initExistingNote(
+          await EditPageRepository.getNoteById(widget.noteId!));
     }
   }
 
@@ -52,7 +60,7 @@ class _EditPageState extends State<EditPage> {
   void initState() {
     super.initState();
     log('Existing NoteId: ${widget.noteId}');
-    _loadNote().then((_) => {});
+    initNote().then((_) => {});
   }
 
   @override
