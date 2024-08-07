@@ -1,5 +1,6 @@
 ## Up for grabs 🔥
-- Fixa search så egen tab/page fast ska ej märkas av användare ksk?? idk hur annars lösa att home page ska alltid laddas om utan o ha en massa hack... vill helst slippa onupdate o sånt, alternativet är state management.
+- Fixa search så egen tab/page fast ska ej märkas av användare ksk?? idk hur annars lösa att home page ska alltid laddas om utan o ha en massa hack... vill helst slippa onupdate o sånt, alternativet är state management. THATS IT - lets do state management lol är så less på hacks:en.
+- navigateToPreviousPage is different depending on if create or edit - so if press back button when creating note itll behave weird and show up even if deleted... cuz of fuckking event hanlding
 - Refaktorera db kod till repo
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
@@ -35,7 +36,7 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - Export/Import maybe add store in gdrive support if safe without backend?
 - smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit. insights page
 - export reminder
-- log note reminder notification 
+- log note reminder notification
 - dark+light theme
 - how to access sqlite database in emulator
 - Proper deploy https://docs.flutter.dev/deployment/android
