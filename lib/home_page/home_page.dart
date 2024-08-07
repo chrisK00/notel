@@ -37,7 +37,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
         body: Container(
-          margin: const EdgeInsets.only(top: 35),
+          margin: const EdgeInsets.only(top: 60),
           child: Column(children: [
             Container(child: searchBar()),
             Expanded(

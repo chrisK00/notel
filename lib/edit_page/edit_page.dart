@@ -97,13 +97,14 @@ class _EditPageState extends State<EditPage> {
       child: Scaffold(
           backgroundColor: const Color.fromARGB(255, 224, 234, 238),
           body: Container(
-              margin: const EdgeInsets.only(top: 30),
+              margin: const EdgeInsets.only(top: 70),
               child: Column(
                 children: [
                   actions(context),
                   Expanded(
                       child: Padding(
-                    padding: const EdgeInsets.only(left: 10, right: 10),
+                    padding:
+                        const EdgeInsets.only(left: 20, right: 20, top: 15),
                     child: QuillEditor.basic(
                         configurations: QuillEditorConfigurations(
                             controller: _controller, expands: true)),
@@ -143,7 +144,7 @@ class _EditPageState extends State<EditPage> {
 
   Padding actions(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 1, right: 3, bottom: 10),
+      padding: const EdgeInsets.only(left: 5, right: 5, bottom: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
