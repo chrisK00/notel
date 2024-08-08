@@ -2,19 +2,17 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:provider/provider.dart';
 import '../dialogs/save_changes_dialog.dart';
 import '../infrastructure/note.dart';
+import '../notes_provider.dart';
 import 'edit_page_repository.dart';
 import 'note_text_toolbar.dart';
 
 class EditPage extends StatefulWidget {
-  const EditPage(
-      {super.key, this.noteId, this.onUpdate, this.onCreate, this.onRemove});
+  const EditPage({super.key, this.noteId});
 
   final int? noteId;
-  final Function? onRemove;
-  final Function? onUpdate;
-  final Function(int)? onCreate;
 
   @override
   State<StatefulWidget> createState() => _EditPageState();
@@ -25,6 +23,7 @@ class _EditPageState extends State<EditPage> {
   var _hasUnsavedChanges = false;
   var _note = Note();
   bool _isNewNote = false;
+  bool _hasPopped = false;
 
   Future initExistingNote(Note note) async {
     _note = note;
@@ -47,7 +46,7 @@ class _EditPageState extends State<EditPage> {
     _isNewNote = true;
   }
 
-  Future<void> initNote() async {
+  Future initNote() async {
     if (widget.noteId == null) {
       await createNote();
     } else {
@@ -88,37 +87,50 @@ class _EditPageState extends State<EditPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      onPopInvoked: (didPop) {
-        if (didPop) {
-          navigateToPreviousPage(context, didPop = true);
-        }
-      },
-      child: Scaffold(
-          backgroundColor: const Color.fromARGB(255, 224, 234, 238),
-          body: Container(
-              margin: const EdgeInsets.only(top: 70),
-              child: Column(
-                children: [
-                  actions(context),
-                  Expanded(
-                      child: Padding(
-                    padding:
-                        const EdgeInsets.only(left: 20, right: 20, top: 15),
-                    child: QuillEditor.basic(
-                        configurations: QuillEditorConfigurations(
-                            controller: _controller, expands: true)),
-                  )),
-                  NoteTextToolbar(controller: _controller),
-                ],
-              ))),
-    );
+    return Consumer<NotesProvider>(builder: (context, provider, child) {
+      return PopScope(
+        onPopInvoked: (didPop) {
+          if (didPop) {
+            onPagePop(context, provider, didPop = true);
+          }
+        },
+        child: Scaffold(
+            backgroundColor: const Color.fromARGB(255, 224, 234, 238),
+            body: Container(
+                margin: const EdgeInsets.only(top: 70),
+                child: Column(
+                  children: [
+                    actions(context, provider),
+                    Expanded(
+                        child: Padding(
+                      padding:
+                          const EdgeInsets.only(left: 20, right: 20, top: 15),
+                      child: QuillEditor.basic(
+                          configurations: QuillEditorConfigurations(
+                              controller: _controller, expands: true)),
+                    )),
+                    NoteTextToolbar(controller: _controller),
+                  ],
+                ))),
+      );
+    });
   }
 
-  Future navigateToPreviousPage(BuildContext context,
+  Future onPagePop(
+      BuildContext context, NotesProvider provider, bool didPop) async {
+    if (_hasPopped) {
+      return;
+    }
+
+    await navigateToPreviousPage(context, provider, didPop);
+  }
+
+  Future navigateToPreviousPage(BuildContext context, NotesProvider provider,
       [bool didPop = false]) async {
+    _hasPopped = true;
     if (!didPop) {
       if (_hasUnsavedChanges) {
+        // TODO:  once we fix so that dialog can be displayed onPop we can get rid of the _hasPopped hack
         final shouldSave = await showDialog<bool>(
             context: context, builder: (context) => const SaveChangesDialog());
 
@@ -128,13 +140,13 @@ class _EditPageState extends State<EditPage> {
       }
     }
 
-    if (_controller.document.toPlainText().trim().isEmpty) {
-      await EditPageRepository.deleteNote(_note.id!);
-      widget.onRemove?.call();
+    _note.text = _controller.document.toPlainText();
+    if (_note.text.trim().isEmpty) {
+      await provider.remove(_note.id!);
     } else if (_isNewNote) {
-      widget.onCreate?.call(_note.id!);
+      provider.add(_note);
     } else {
-      widget.onUpdate?.call();
+      provider.update(_note);
     }
 
     if (!didPop) {
@@ -142,7 +154,7 @@ class _EditPageState extends State<EditPage> {
     }
   }
 
-  Padding actions(BuildContext context) {
+  Padding actions(BuildContext context, NotesProvider provider) {
     return Padding(
       padding: const EdgeInsets.only(left: 5, right: 5, bottom: 10),
       child: Row(
@@ -150,7 +162,8 @@ class _EditPageState extends State<EditPage> {
         children: [
           IconButton(
               iconSize: 30,
-              onPressed: () async => await navigateToPreviousPage(context),
+              onPressed: () async =>
+                  await navigateToPreviousPage(context, provider),
               icon: const Icon(Icons.arrow_back)),
           saveButton()
         ],

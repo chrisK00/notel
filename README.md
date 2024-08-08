@@ -1,16 +1,12 @@
 ## Up for grabs 🔥
-- Fixa search så egen tab/page fast ska ej märkas av användare ksk?? idk hur annars lösa att home page ska alltid laddas om utan o ha en massa hack... vill helst slippa onupdate o sånt, alternativet är state management. THATS IT - lets do state management lol är så less på hacks:en.
-- navigateToPreviousPage is different depending on if create or edit - so if press back button when creating note itll behave weird and show up even if deleted... cuz of fuckking event hanlding
-- Refaktorera db kod till repo
+- on clear search on home page - get rid of keyboard
+- on click new note open editing keyboard directly
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
-<!-- - Hitta ny DB -->
 - fixa note.id så ej nullable...
+- // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column. för date rows
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
-- Förbättra navigatetopreviouspage i Edit page
-// bättre hantera onSave so dont create new note on load?
-// borde ta bort om tom, why save above etc.. better handling = slipper reload i home page etc...
 - för insert current time kan ha en custom knapp i edit quill toolbar som simply trycker in texten/delta i documentet. kanske man vill ha det i bold style. den kanske ska runda till xx:x0 istället för exakt exakt? skit i det temporärt lol övertänker
 - Stats page alternatively stats button when searching for a word. E.g headache shows how many notes it was in for the last month/week
 // tags would be nice, e.g huvudvärk, or maybe just implement a good search feature that counts results words (if duplicated word in a day only take 1)
@@ -28,10 +24,8 @@ class DateOnly
 - Dispose DB connection if required on app exit
 https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit-flutter
 - Split editpage into create and edit page
-- Consider using another package than sqflite for DB
 - prestandamätningar?
-- tänk om kring cachad allnotes och notes. kanske istället använd riktig cache lol/state. alternativet är ju implement database searching etc.. de kanske efter bytt DB till bättre prestanda
-- consider using a divider to display year like subtrack. less clutter for current year? mb only show year for previous year widgets?
+- felhantering?
 - Encrypt exported notes
 - Export/Import maybe add store in gdrive support if safe without backend?
 - smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit. insights page
@@ -47,6 +41,8 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - sqflite https://medium.com/@dpatel312002/guide-for-sqflite-in-flutter-59e429db1088
 - sqflite https://blog.stackademic.com/efficient-sqlite-database-operations-in-flutter-using-sqflite-643034389a4c
 - Notes app https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
+- Provider state https://docs.flutter.dev/data-and-backend/state-mgmt/simple
+- callbacks https://www.digitalocean.com/community/tutorials/flutter-widget-communication
 
 ### How to run
 - Run `flutter run`. After making changes click on terminal tab and press R to hot reload. Alternatively just run the app using `F5`

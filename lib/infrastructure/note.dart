@@ -1,7 +1,7 @@
 class Note {
   Note({this.id, this.text = "", DateTime? date})
       : date = date ?? DateTime.now();
-  int? id;
+  int? id; // TODO doesnt make sense to not have an id
   String text = "";
   DateTime date = DateTime.now();
 

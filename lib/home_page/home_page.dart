@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notel/utils/extensions.dart';
+import 'package:provider/provider.dart';
+
 import '../edit_page/edit_page.dart';
 import '../infrastructure/note.dart';
+import '../notes_provider.dart';
 import 'home_page_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -16,15 +19,10 @@ class _HomePageState extends State<HomePage> {
   String searchText = '';
   final _searchTextController = TextEditingController();
 
-  final allNotes = <Note>[];
-  final notes = <Note>[];
-
   Future loadNotes() async {
-    notes.clear();
     final loadedNotes = await HomePageRepository.loadNotes();
-    setState(() {
-      notes.addAll(loadedNotes);
-    });
+    final provider = Provider.of<NotesProvider>(context, listen: false);
+    provider.init(loadedNotes);
   }
 
   @override
@@ -35,74 +33,69 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        body: Container(
-          margin: const EdgeInsets.only(top: 60),
-          child: Column(children: [
-            Container(child: searchBar()),
-            Expanded(
-              child: ListView.separated(
-                  key: const PageStorageKey('notesListKey'),
-                  itemBuilder: (context, index) =>
-                      noteRow(context, notes[index]),
-                  separatorBuilder: (_, __) => const Divider(),
-                  itemCount: notes.length),
-            )
-          ]),
-        ),
-        bottomNavigationBar: Container(
-          margin: const EdgeInsets.only(right: 10, bottom: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              addNoteButton(context),
-            ],
+    return Consumer<NotesProvider>(builder: (context, provider, child) {
+      return Scaffold(
+          body: Container(
+            margin: const EdgeInsets.only(top: 60),
+            child: Column(children: [
+              Container(child: searchBar(provider)),
+              Expanded(
+                child: ListView.separated(
+                    key: const PageStorageKey('notesListKey'),
+                    itemBuilder: (context, index) =>
+                        noteRow(context, provider.notes[index]),
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemCount: provider.notes.length),
+              )
+            ]),
           ),
-        ));
+          bottomNavigationBar: Container(
+            margin: const EdgeInsets.only(right: 10, bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                addNoteButton(context),
+              ],
+            ),
+          ));
+    });
   }
 
-  Widget searchBar() {
+  Widget searchBar(NotesProvider provider) {
     return TextField(
       controller: _searchTextController,
       decoration: InputDecoration(
           suffixIcon: (_searchTextController.text.isEmptyOrWhitespace()
               ? const Icon(Icons.search)
               : IconButton(
-                  icon: const Icon(Icons.clear), onPressed: clearSearch)),
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => clearSearch(provider))),
           contentPadding: const EdgeInsets.only(left: 10, top: 10)),
-      onChanged: onSearch,
+      onChanged: (value) => onSearch(value, provider),
       onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
     );
   }
 
-  void clearSearch() {
+  Future clearSearch(NotesProvider provider) async {
+    final loadedNotes = await HomePageRepository.loadNotes();
+    provider.init(loadedNotes);
+
     setState(() {
       searchText = '';
       _searchTextController.text = '';
-      notes.clear();
-      notes.addAll(allNotes);
-      allNotes.clear();
     });
   }
 
-  Future onSearch(value) async {
+  Future onSearch(String value, NotesProvider provider) async {
     {
-      if (allNotes.isEmpty) {
-        allNotes.addAll(notes);
-      }
-
-      searchText = value.trim() ?? '';
+      searchText = value.trim();
       if (value.trim().isEmpty) {
-        clearSearch();
+        clearSearch(provider);
         return;
       }
 
-      final ids = await HomePageRepository.findNoteIdsByText(value);
-
-      setState(() {
-        notes.clear();
-        notes.addAll(allNotes.where((note) => ids.contains(note.id)).toList());
-      });
+      final foundNotes = await HomePageRepository.findNotesByText(value);
+      provider.init(foundNotes);
     }
   }
 
@@ -113,52 +106,16 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  EditPage createEditNotePage(int noteId) => EditPage(
-        noteId: noteId,
-        onUpdate: () {
-          HomePageRepository.loadNote(noteId).then((updatedNote) {
-            setState(() {
-              updateNoteInList(notes, noteId, updatedNote.text);
-              updateNoteInList(allNotes, noteId, updatedNote.text);
-            });
-          });
-        },
-        onRemove: () {
-          setState(() {
-            notes.removeWhere((n) => n.id == noteId);
-            allNotes.removeWhere((n) => n.id == noteId);
-          });
-        },
-      );
-
-  EditPage createNewNotePage() => EditPage(
-        onCreate: (noteId) {
-          HomePageRepository.loadNote(noteId).then((updatedNote) {
-            setState(() {
-              // hack
-              if (allNotes.length < notes.length) {
-                allNotes.addAll(notes);
-              }
-
-              clearSearch();
-              notes.add(updatedNote);
-              notes.sort((a, b) => b.date.compareTo(a.date));
-            });
-          });
-        },
-      );
-
   GestureDetector noteRow(BuildContext context, Note n) {
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () async {
           await Navigator.push(context,
-              MaterialPageRoute(builder: (c) => createEditNotePage(n.id!)));
+              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id!)));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column
             Column(
               children: [
                 Text(
@@ -197,7 +154,7 @@ class _HomePageState extends State<HomePage> {
     return FloatingActionButton(
       onPressed: () async {
         await Navigator.push(
-            context, MaterialPageRoute(builder: (c) => createNewNotePage()));
+            context, MaterialPageRoute(builder: (c) => const EditPage()));
       },
       child: const Icon(
         Icons.add,

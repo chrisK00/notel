@@ -3,10 +3,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:notel/utils/db_seed.dart';
+import 'package:provider/provider.dart';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'infrastructure/db.dart';
 import 'home_page/home_page.dart';
+import 'notes_provider.dart';
 import 'settings_page/settings_page.dart';
 
 void main() async {
@@ -21,7 +23,8 @@ void main() async {
     log('Db seed');
     await DebugUtil.seedDatabase();
   }
-  runApp(const App());
+  runApp(ChangeNotifierProvider(
+      create: (context) => NotesProvider(), child: const App()));
 }
 
 class App extends StatefulWidget {
@@ -57,7 +60,7 @@ class _AppState extends State<App> {
               currentPageIndex = 0;
             }),
           1 => setState(() {
-              currentPage = SettingsPage();
+              currentPage = const SettingsPage();
               currentPageIndex = 1;
             }),
           _ => throw UnimplementedError(),
