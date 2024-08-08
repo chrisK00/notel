@@ -10,20 +10,23 @@ class DebugUtil {
     batch.insert(
         Db.noteTable,
         Note(
-                text: r'[{"insert":"food time\n"}]',
+                id: 1,
+                displayText: r'[{"insert":"food time\n"}]',
                 date: DateTime(today.year, 1, 1))
             .toMap());
     batch.insert(
         Db.noteTable,
         Note(
-                text:
+                id: 2,
+                displayText:
                     r'[{"insert":"10:00 awake finally\ntime to eat n poo. Yummy\n"}]',
                 date: today)
             .toMap());
     batch.insert(
         Db.noteTable,
         Note(
-                text:
+                id: 3,
+                displayText:
                     r'[{"insert":"10:30 fk i am zo energy ball attack party popper ok its ok\ntime to eat n poo. Yummy\n"}]',
                 date: DateTime(today.year, 2, 2))
             .toMap());
@@ -32,7 +35,8 @@ class DebugUtil {
       batch.insert(
           Db.noteTable,
           Note(
-                  text: '[{"insert":"hi $i\\n energy pooper\\n"}]',
+                  id: i + 3,
+                  displayText: '[{"insert":"hi $i\\n energy pooper\\n"}]',
                   date: DateTime(today.year, 3, i))
               .toMap());
     }

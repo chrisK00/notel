@@ -2,7 +2,7 @@ import 'package:notel/infrastructure/db.dart';
 
 import '../infrastructure/note.dart';
 
-class EditPageRepository {
+class NotePageRepository {
   static Future<Note> getNoteById(int noteId) async {
     final getNoteResult = await Db.instance
         .query(Db.noteTable, where: "id= ?", whereArgs: [noteId], limit: 1);
@@ -14,8 +14,15 @@ class EditPageRepository {
         .delete(Db.noteTable, where: 'id = ?', whereArgs: [noteId]);
   }
 
-  static Future<int> createNote(Note note) async {
-    return await Db.instance.insert(Db.noteTable, note.toMap());
+  static Future<Note> createNote() async {
+    final now = DateTime.now();
+    final noteId = await Db.instance.insert(Db.noteTable, {
+      'id': null,
+      'text': '',
+      'date': now.toString(),
+    });
+    final newNote = Note(id: noteId, date: now, displayText: '');
+    return newNote;
   }
 
   static Future<int> updateNote(int noteId, String jsonText) async {

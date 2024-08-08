@@ -48,7 +48,10 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - Run `flutter run`. After making changes click on terminal tab and press R to hot reload. Alternatively just run the app using `F5`
 
 ### How to deploy
-- Run `flutter build apk --split-per-abi`
+- Run
+```csharp
+flutter build apk --split-per-abi
+```
 - Connect Android device to pc
 - Modify the device id and run
  ```csharp

@@ -1,11 +1,10 @@
 import 'dart:collection';
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:notel/edit_page/edit_page_repository.dart';
+import 'package:notel/note_page/note_page_repository.dart';
+import 'package:notel/home_page/home_page_repository.dart';
 import 'package:notel/infrastructure/note.dart';
 
 class NotesProvider extends ChangeNotifier {
-  static const int _noteDisplayTextLength = 36;
   final List<Note> _notes = [];
 
   UnmodifiableListView<Note> get notes => UnmodifiableListView(_notes);
@@ -16,33 +15,26 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void update(Note noteToUpdate) {
-    _trimText(noteToUpdate);
-    final index = _notes.indexWhere((note) => note.id == noteToUpdate.id);
-    _notes[index].date = noteToUpdate.date;
-    _notes[index].text = noteToUpdate.text;
+  Future update(int noteId) async {
+    final note = await HomePageRepository.loadNote(noteId);
+    final index = _notes.indexWhere((note) => note.id == noteId);
+    _notes[index].date = note.date;
+    _notes[index].displayText = note.displayText;
 
     _sortNotes();
     notifyListeners();
   }
 
   void add(Note note) {
-    _trimText(note);
     _notes.add(note);
     _sortNotes();
-
     notifyListeners();
   }
 
   Future remove(int noteId) async {
-    await EditPageRepository.deleteNote(noteId);
+    await NotePageRepository.deleteNote(noteId);
     _notes.removeWhere((note) => note.id == noteId);
     notifyListeners();
-  }
-
-  void _trimText(Note note) {
-    final cutOfLength = min(_noteDisplayTextLength, note.text.length);
-    note.text = note.text.substring(0, cutOfLength);
   }
 
   void _sortNotes() {

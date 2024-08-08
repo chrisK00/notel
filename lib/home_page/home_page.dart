@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/note_page/new_note_page.dart';
 import 'package:notel/utils/extensions.dart';
 import 'package:provider/provider.dart';
 
-import '../edit_page/edit_page.dart';
+import '../note_page/edit_page.dart';
 import '../infrastructure/note.dart';
 import '../notes_provider.dart';
 import 'home_page_repository.dart';
@@ -16,7 +17,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String searchText = '';
   final _searchTextController = TextEditingController();
 
   Future loadNotes() async {
@@ -81,15 +81,14 @@ class _HomePageState extends State<HomePage> {
     provider.init(loadedNotes);
 
     setState(() {
-      searchText = '';
       _searchTextController.text = '';
     });
   }
 
   Future onSearch(String value, NotesProvider provider) async {
     {
-      searchText = value.trim();
-      if (value.trim().isEmpty) {
+      _searchTextController.text = value.trim();
+      if (_searchTextController.text.isEmpty) {
         clearSearch(provider);
         return;
       }
@@ -102,7 +101,7 @@ class _HomePageState extends State<HomePage> {
   void updateNoteInList(List<Note> notes, int noteId, String newText) {
     final noteIndex = notes.indexWhere((n) => n.id == noteId);
     if (noteIndex != -1) {
-      notes[noteIndex].text = newText;
+      notes[noteIndex].displayText = newText;
     }
   }
 
@@ -111,7 +110,7 @@ class _HomePageState extends State<HomePage> {
         behavior: HitTestBehavior.translucent,
         onTap: () async {
           await Navigator.push(context,
-              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id!)));
+              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -141,7 +140,7 @@ class _HomePageState extends State<HomePage> {
             SizedBox(
               width: 250,
               child: Text(
-                n.text,
+                n.displayText,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 3,
               ),
@@ -154,7 +153,7 @@ class _HomePageState extends State<HomePage> {
     return FloatingActionButton(
       onPressed: () async {
         await Navigator.push(
-            context, MaterialPageRoute(builder: (c) => const EditPage()));
+            context, MaterialPageRoute(builder: (c) => const NewNotePage()));
       },
       child: const Icon(
         Icons.add,

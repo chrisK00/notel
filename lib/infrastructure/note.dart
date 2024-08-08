@@ -1,14 +1,16 @@
+import 'dart:math';
+
 class Note {
-  Note({this.id, this.text = "", DateTime? date})
+  Note({required this.id, this.displayText = "", DateTime? date})
       : date = date ?? DateTime.now();
-  int? id; // TODO doesnt make sense to not have an id
-  String text = "";
-  DateTime date = DateTime.now();
+  int id;
+  String displayText;
+  DateTime date;
 
   Map<String, Object?> toMap() {
     return {
       'id': id,
-      'text': text,
+      'text': displayText,
       'date': date.toString(),
     };
   }
@@ -16,13 +18,19 @@ class Note {
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
       id: map['id'],
-      text: map['text'] ?? '',
+      displayText: map['text'] ?? '',
       date: DateTime.parse(map['date']),
     );
   }
 
   @override
   String toString() {
-    return 'Note{id: $id, date: $date, text length: ${text.length}}';
+    return 'Note{id: $id, date: $date, text length: ${displayText.length}}';
+  }
+
+  static String trimNoteDisplayText(String text) {
+    const int noteDisplayTextLength = 36;
+    final cutOfLength = min(noteDisplayTextLength, text.length);
+    return text.substring(0, cutOfLength);
   }
 }
