@@ -25,8 +25,13 @@ class NotePageRepository {
     return newNote;
   }
 
-  static Future<int> updateNote(int noteId, String jsonText) async {
+  static Future<int> updateNoteText(int noteId, String jsonText) async {
     return await Db.instance.update(Db.noteTable, {'TEXT': jsonText},
+        where: 'id = ?', whereArgs: [noteId]);
+  }
+
+  static Future<int> updateNoteDate(int noteId, DateTime date) async {
+    return await Db.instance.update(Db.noteTable, {'date': date.toString()},
         where: 'id = ?', whereArgs: [noteId]);
   }
 }

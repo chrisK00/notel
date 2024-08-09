@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:intl/intl.dart';
 import 'package:notel/dialogs/save_changes_dialog.dart';
 import 'package:notel/infrastructure/note.dart';
 import 'package:notel/note_page/note_page_repository.dart';
@@ -33,7 +34,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     setState(() => _hasUnsavedChanges = false);
     final json = jsonEncode(controller.document.toDelta().toJson());
     try {
-      final changesMade = await NotePageRepository.updateNote(note.id, json);
+      final changesMade =
+          await NotePageRepository.updateNoteText(note.id, json);
 
       note.displayText =
           Note.trimNoteDisplayText(controller.document.toPlainText());
@@ -104,15 +106,35 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                 Navigator.pop(context);
               },
               icon: const Icon(Icons.arrow_back)),
+          TextButton(
+              onPressed: () async => await updateDate(provider),
+              child: Text(DateFormat('d MMMM yyyy').format(note.date))),
           saveButton()
         ],
       ),
     );
   }
 
-  Visibility saveButton() {
-    return Visibility(
-      visible: _hasUnsavedChanges,
+  Future updateDate(NotesProvider notesProvider) async {
+    final today = DateTime.now();
+    final newDate = await showDatePicker(
+        initialDate: note.date,
+        currentDate: note.date,
+        context: context,
+        firstDate: DateTime(today.year - 1, 1, 1),
+        lastDate: today);
+    if (newDate != null) {
+      await NotePageRepository.updateNoteDate(note.id, newDate);
+      setState(() {
+        note.date = newDate;
+      });
+      notesProvider.update(note.id);
+    }
+  }
+
+  Widget saveButton() {
+    return Opacity(
+      opacity: _hasUnsavedChanges ? 1 : 0,
       child: IconButton(
           iconSize: 30,
           onPressed: () async => _onSave(),
