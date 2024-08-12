@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   final controller = QuillController.basic();
+  final FocusNode _focusNode = FocusNode();
   Note note = Note(id: 0);
   var _hasUnsavedChanges = false;
 
@@ -24,6 +25,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   @override
   void dispose() {
     controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -51,6 +53,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     setState(() => _hasUnsavedChanges = true);
   }
 
+  void setCaretToEnd() =>
+      controller.moveCursorToPosition(controller.document.length);
+
   Future _showSaveDialog() async {
     if (_hasUnsavedChanges) {
       final shouldSave = await showDialog<bool>(
@@ -64,6 +69,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   @override
   Widget build(BuildContext context) {
+    setCaretToEnd();
     return Consumer<NotesProvider>(builder: (context, provider, child) {
       return PopScope(
         onPopInvoked: (didPop) async {
@@ -79,13 +85,14 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                   children: [
                     actions(context, provider),
                     Expanded(
-                        child: Padding(
-                      padding:
-                          const EdgeInsets.only(left: 20, right: 20, top: 15),
-                      child: QuillEditor.basic(
-                          configurations: QuillEditorConfigurations(
-                              controller: controller, expands: true)),
-                    )),
+                        child: QuillEditor.basic(
+                            focusNode: _focusNode,
+                            configurations: QuillEditorConfigurations(
+                                autoFocus: true,
+                                controller: controller,
+                                padding: const EdgeInsets.only(
+                                    left: 25, right: 25, top: 20),
+                                expands: true))),
                     NoteTextToolbar(controller: controller),
                   ],
                 ))),
@@ -108,7 +115,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
               icon: const Icon(Icons.arrow_back)),
           TextButton(
               onPressed: () async => await updateDate(provider),
-              child: Text(DateFormat('d MMMM yyyy').format(note.date))),
+              child: Text(
+                DateFormat('d MMMM yyyy').format(note.date),
+                style: const TextStyle(color: Colors.black),
+              )),
           saveButton()
         ],
       ),

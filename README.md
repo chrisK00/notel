@@ -1,9 +1,10 @@
 ## Up for grabs 🔥
 - on clear search on home page - get rid of keyboard
 - on click new note open editing keyboard directly
+- option to hide note text on home page?
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
-- fixa note.id så ej nullable...
+- remove note maybe hold in och så får man ny widget som har en knapp åt höger trashcan. alternativt man håller inne o får popup eller ba en liten select list elr ngt.
 - // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column. för date rows
 - At top of screen where the back < button and save button are ADD inbetween  editable note date
 https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
