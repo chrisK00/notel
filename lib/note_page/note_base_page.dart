@@ -19,7 +19,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   @override
   void initState() {
     super.initState();
-    initNote().then((_) => {});
+    initNote().then((_) => {setCaretToEnd()});
   }
 
   @override
@@ -69,7 +69,6 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   @override
   Widget build(BuildContext context) {
-    setCaretToEnd();
     return Consumer<NotesProvider>(builder: (context, provider, child) {
       return PopScope(
         onPopInvoked: (didPop) async {
