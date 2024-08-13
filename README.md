@@ -36,6 +36,7 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - dark+light theme
 - how to access sqlite database in emulator
 - Proper deploy https://docs.flutter.dev/deployment/android
+- rebase git history o gör public
 
 ## Guides
 - flutter quill https://github.com/singerdmx/flutter-quill/blob/master/doc/code_introduction.md
