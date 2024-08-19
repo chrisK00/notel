@@ -1,4 +1,5 @@
 ## Up for grabs 🔥
+- gör lite mörkare BG?
 - flytta ner more_vertical button on edit page
 - home page så verkar ADD button ta upp en hel row där man skulle kunna displaya items ist
 - on clear search on home page - get rid of keyboard
