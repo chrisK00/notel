@@ -1,4 +1,5 @@
 ## Up for grabs 🔥
+- add padding to quilltoolbar så kan se text längst ner on scroll för är ivägen
 - show "..." for last letters instead of just cutting text on home page
 - on clear search on home page - get rid of keyboard
 - on click new note open editing keyboard directly
