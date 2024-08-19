@@ -19,7 +19,7 @@ class SaveChangesDialog extends StatelessWidget {
             ),
           ),
           Container(
-            color: const Color.fromARGB(255, 144, 214, 223),
+            color: Theme.of(context).colorScheme.primary.withGreen(120),
             child: SimpleDialogOption(
               child: const Text('Save'),
               onPressed: () => Navigator.pop(context, true),

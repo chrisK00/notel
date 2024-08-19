@@ -1,5 +1,4 @@
 ## Up for grabs 🔥
-- add padding to quilltoolbar så kan se text längst ner on scroll för är ivägen
 - show "..." for last letters instead of just cutting text on home page
 - on clear search on home page - get rid of keyboard
 - on click new note open editing keyboard directly
@@ -34,7 +33,6 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit. insights page
 - export reminder
 - log note reminder notification
-- dark+light theme
 - how to access sqlite database in emulator
 - Proper deploy https://docs.flutter.dev/deployment/android
 - rebase git history o gör public

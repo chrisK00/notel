@@ -23,6 +23,7 @@ void main() async {
     log('Db seed');
     await DebugUtil.seedDatabase();
   }
+
   runApp(ChangeNotifierProvider(
       create: (context) => NotesProvider(), child: const App()));
 }
@@ -41,7 +42,9 @@ class _AppState extends State<App> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'notel',
+      darkTheme: ThemeData.dark(useMaterial3: true)
+          .copyWith(scaffoldBackgroundColor: Color.fromARGB(255, 42, 42, 42)),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

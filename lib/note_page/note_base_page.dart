@@ -77,7 +77,6 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
           }
         },
         child: Scaffold(
-            backgroundColor: const Color.fromARGB(255, 224, 234, 238),
             body: Container(
                 margin: const EdgeInsets.only(top: 70),
                 child: Column(
@@ -116,7 +115,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
               onPressed: () async => await updateDate(provider),
               child: Text(
                 DateFormat('d MMMM yyyy').format(note.date),
-                style: const TextStyle(color: Colors.black),
+                // style: const TextStyle(color: Colors.black),
               )),
           saveButton()
         ],
@@ -147,7 +146,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       child: IconButton(
           iconSize: 30,
           onPressed: () async => _onSave(),
-          icon: const Icon(Icons.save)),
+          icon: Icon(Icons.save, color: Theme.of(context).colorScheme.primary)),
     );
   }
 }
