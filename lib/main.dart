@@ -43,8 +43,8 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'notel',
-      darkTheme: ThemeData.dark(useMaterial3: true)
-          .copyWith(scaffoldBackgroundColor: Color.fromARGB(255, 42, 42, 42)),
+      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+          scaffoldBackgroundColor: const Color.fromARGB(255, 40, 40, 40)),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,

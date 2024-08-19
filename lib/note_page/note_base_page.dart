@@ -77,47 +77,80 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
           }
         },
         child: Scaffold(
-            body: Container(
-                margin: const EdgeInsets.only(top: 70),
-                child: Column(
-                  children: [
-                    actions(context, provider),
-                    Expanded(
-                        child: QuillEditor.basic(
-                            focusNode: _focusNode,
-                            configurations: QuillEditorConfigurations(
-                                autoFocus: true,
-                                controller: controller,
-                                padding: const EdgeInsets.only(
-                                    left: 25, right: 25, top: 20),
-                                expands: true))),
-                    NoteTextToolbar(controller: controller),
-                  ],
-                ))),
+            body: Column(
+          children: [
+            actions(context, provider),
+            Expanded(
+                child: QuillEditor.basic(
+                    focusNode: _focusNode,
+                    configurations: QuillEditorConfigurations(
+                        autoFocus: true,
+                        controller: controller,
+                        padding:
+                            const EdgeInsets.only(left: 25, right: 25, top: 20),
+                        expands: true))),
+            NoteTextToolbar(controller: controller),
+          ],
+        )),
       );
     });
   }
 
-  Padding actions(BuildContext context, NotesProvider provider) {
+  Widget actions(BuildContext context, NotesProvider provider) {
     return Padding(
-      padding: const EdgeInsets.only(left: 5, right: 5, bottom: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.only(right: 5, left: 5),
+      child: Column(
         children: [
-          IconButton(
-              iconSize: 30,
-              onPressed: () async {
-                await _showSaveDialog();
-                Navigator.pop(context);
-              },
-              icon: const Icon(Icons.arrow_back)),
-          TextButton(
-              onPressed: () async => await updateDate(provider),
-              child: Text(
-                DateFormat('d MMMM yyyy').format(note.date),
-                // style: const TextStyle(color: Colors.black),
-              )),
-          saveButton()
+          Padding(
+            padding: const EdgeInsets.only(top: 11),
+            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              PopupMenuButton<int>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (selected) async {
+                    switch (selected) {
+                      case 1:
+                        await provider.remove(note.id);
+                        note.displayText = "";
+                        Navigator.pop(context);
+                        break;
+                      default:
+                    }
+                  },
+                  iconColor:
+                      Theme.of(context).colorScheme.secondary.withOpacity(0.7),
+                  itemBuilder: (context) => [
+                        const PopupMenuItem<int>(
+                          value: 1,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [Icon(Icons.delete), Text("delete")],
+                          ),
+                        )
+                      ])
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10, top: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                    iconSize: 30,
+                    onPressed: () async {
+                      await _showSaveDialog();
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.arrow_back)),
+                TextButton(
+                    onPressed: () async => await updateDate(provider),
+                    child: Text(
+                      DateFormat('d MMMM yyyy').format(note.date),
+                      // style: const TextStyle(color: Colors.black),
+                    )),
+                saveButton()
+              ],
+            ),
+          ),
         ],
       ),
     );

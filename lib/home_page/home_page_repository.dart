@@ -22,7 +22,7 @@ class HomePageRepository {
     final rows = await Db.instance.rawQuery(r'''
         SELECT
           id,
-          substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
+          substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 100) text,
           date
         FROM NOTE
         WHERE id = ?
@@ -36,7 +36,7 @@ class HomePageRepository {
       final rows = await Db.instance.rawQuery(r'''
         SELECT
           NOTE.id,
-          substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
+          substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 100) text,
           date
         FROM Note,
         json_each(Note.text) AS json_data

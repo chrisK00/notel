@@ -5,10 +5,7 @@
 - option to hide note text on home page?
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
-- remove note maybe hold in och så får man ny widget som har en knapp åt höger trashcan. alternativt man håller inne o får popup eller ba en liten select list elr ngt.
 - // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column. för date rows
-- At top of screen where the back < button and save button are ADD inbetween  editable note date
-https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 - för insert current time kan ha en custom knapp i edit quill toolbar som simply trycker in texten/delta i documentet. kanske man vill ha det i bold style. den kanske ska runda till xx:x0 istället för exakt exakt? skit i det temporärt lol övertänker
 - Stats page alternatively stats button when searching for a word. E.g headache shows how many notes it was in for the last month/week
 // tags would be nice, e.g huvudvärk, or maybe just implement a good search feature that counts results words (if duplicated word in a day only take 1)
@@ -29,7 +26,7 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - prestandamätningar?
 - felhantering?
 - Encrypt exported notes
-- Export/Import maybe add store in gdrive support if safe without backend?
+- Export/Import maybe add store in gdrive support if safe without backend? import notes dialog Are you sure you would like to import x amount of notes
 - smileys för o spåra vilka dagar e mest skit o hur ofta/vad gör de skit. insights page
 - export reminder
 - log note reminder notification
