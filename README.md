@@ -1,4 +1,5 @@
 ## Up for grabs 🔥
+- går inte att söka med space
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - flytta ner more_vertical button on edit page
 - home page så verkar ADD button ta upp en hel row där man skulle kunna displaya items ist
