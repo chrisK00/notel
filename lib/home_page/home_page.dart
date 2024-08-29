@@ -35,29 +35,22 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Consumer<NotesProvider>(builder: (context, provider, child) {
       return Scaffold(
-          body: Container(
-            margin: const EdgeInsets.only(top: 60),
-            child: Column(children: [
-              Container(child: searchBar(provider)),
-              Expanded(
-                child: ListView.separated(
-                    key: const PageStorageKey('notesListKey'),
-                    itemBuilder: (context, index) =>
-                        noteRow(context, provider.notes[index]),
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemCount: provider.notes.length),
-              )
-            ]),
-          ),
-          bottomNavigationBar: Container(
-            margin: const EdgeInsets.only(right: 10, bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                addNoteButton(context),
-              ],
+        body: Container(
+          margin: const EdgeInsets.only(top: 60),
+          child: Column(children: [
+            Container(child: searchBar(provider)),
+            Expanded(
+              child: ListView.separated(
+                  key: const PageStorageKey('notesListKey'),
+                  itemBuilder: (context, index) =>
+                      noteRow(context, provider.notes[index]),
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemCount: provider.notes.length),
             ),
-          ));
+          ]),
+        ),
+        floatingActionButton: addNoteButton(context),
+      );
     });
   }
 
@@ -65,7 +58,7 @@ class _HomePageState extends State<HomePage> {
     return TextField(
       controller: _searchTextController,
       decoration: InputDecoration(
-          suffixIcon: (_searchTextController.text.isEmptyOrWhitespace()
+          suffixIcon: (_searchTextController.text.isEmpty
               ? const Icon(Icons.search)
               : IconButton(
                   icon: const Icon(Icons.clear),
@@ -79,15 +72,13 @@ class _HomePageState extends State<HomePage> {
   Future clearSearch(NotesProvider provider) async {
     final loadedNotes = await HomePageRepository.loadNotes();
     provider.init(loadedNotes);
-
-    setState(() {
-      _searchTextController.text = '';
-    });
+    FocusManager.instance.primaryFocus?.unfocus();
+    setState(() => _searchTextController.text = '');
   }
 
   Future onSearch(String value, NotesProvider provider) async {
     {
-      _searchTextController.text = value.trim();
+      _searchTextController.text = value;
       if (_searchTextController.text.isEmpty) {
         clearSearch(provider);
         return;

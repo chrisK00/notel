@@ -1,9 +1,4 @@
 ## Up for grabs 🔥
-- gör lite mörkare BG?
-- flytta ner more_vertical button on edit page
-- home page så verkar ADD button ta upp en hel row där man skulle kunna displaya items ist
-- on clear search on home page - get rid of keyboard
-- on click new note open editing keyboard directly
 - option to hide note text on home page?
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
@@ -24,8 +19,6 @@ class DateOnly
   @override  String toString() => '$year-$month-$day';
 - Dispose DB connection if required on app exit
 https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit-flutter
-- Split editpage into create and edit page
-- prestandamätningar?
 - felhantering?
 - Encrypt exported notes
 - Export/Import maybe add store in gdrive support if safe without backend? import notes dialog Are you sure you would like to import x amount of notes

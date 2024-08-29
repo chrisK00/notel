@@ -102,7 +102,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 11),
+            padding: const EdgeInsets.only(top: 14),
             child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               PopupMenuButton<int>(
                   icon: const Icon(Icons.more_vert),
@@ -130,7 +130,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, top: 10),
+            padding: const EdgeInsets.only(bottom: 10, top: 7),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
