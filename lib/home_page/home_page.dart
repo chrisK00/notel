@@ -62,7 +62,10 @@ class _HomePageState extends State<HomePage> {
               ? const Icon(Icons.search)
               : IconButton(
                   icon: const Icon(Icons.clear),
-                  onPressed: () => clearSearch(provider))),
+                  onPressed: () {
+                    clearSearch(provider);
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  })),
           contentPadding: const EdgeInsets.only(left: 10, top: 10)),
       onChanged: (value) => onSearch(value, provider),
       onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
