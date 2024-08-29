@@ -38,6 +38,7 @@ https://stackoverflow.com/questions/60184497/how-to-execute-code-before-app-exit
 - Notes app https://www.youtube.com/watch?v=yW9jtWGHmuE&list=PLzzt2WMkurR2kE9TPm4BwW5XrvdavgZiV&index=12
 - Provider state https://docs.flutter.dev/data-and-backend/state-mgmt/simple
 - callbacks https://www.digitalocean.com/community/tutorials/flutter-widget-communication
+- tips and tricks https://github.com/vandadnp/flutter-tips-and-tricks?tab=readme-ov-file
 
 ### How to run
 - Run `flutter run`. After making changes click on terminal tab and press R to hot reload. Alternatively just run the app using `F5`
