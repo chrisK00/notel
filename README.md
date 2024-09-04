@@ -1,4 +1,5 @@
 ## Up for grabs 🔥
+- display day of week 
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - option to hide note text on home page?
 - ta ner lite UI är för långt upp
