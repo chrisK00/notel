@@ -2,6 +2,8 @@
 - display day of week 
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - option to hide note text on home page?
+- On search show keywords what searched for in description take that part that was searched fir e.g blodtryck search ser alla värden
+- elm tycker title smart ide
 - ta ner lite UI är för långt upp
 <!-- - fix bugg when saving note and not using arrow to go back but using the android buttons the event is not called. gesturedetector or smtn. alternativt bara alltid ladda in notes lmao. avvakta med search/ use search tab --> Just nu går ej visa dialog on changes not saved
 - // TODO kan vi fixa padding TOP?/ Transform för att flytta upp Column. för date rows
