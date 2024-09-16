@@ -2,7 +2,7 @@
 - display day of week 
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - option to hide note text on home page?
-- delete confirm flytta ksk åt vänster o gör röd bakgrund vill ej råka trycka. alt flytta ner save or lägg till soft delete
+- delete confirm flytta ksk åt vänster o gör röd bakgrund vill ej råka trycka. alt flytta ner save or lägg till soft delete. gör knappen vertical ist för horizontal
 - On search show keywords what searched for in description take that part that was searched fir e.g blodtryck search ser alla värden
 - elm tycker title smart ide
 - ta ner lite UI är för långt upp
