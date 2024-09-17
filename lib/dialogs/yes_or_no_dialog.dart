@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
 
-class SaveChangesDialog extends StatelessWidget {
-  const SaveChangesDialog({
-    super.key,
-  });
+class YesOrNoDialog extends StatelessWidget {
+  const YesOrNoDialog(
+      {super.key,
+      required this.title,
+      required this.successBtnText,
+      required this.dangerBtnText});
+
+  final String title;
+  final String successBtnText;
+  final String dangerBtnText;
 
   @override
   Widget build(BuildContext context) {
     return SimpleDialog(
-      title: const Text("Save changes?"),
+      title: Text(title),
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
           Container(
             color: const Color.fromARGB(255, 231, 104, 93),
             child: SimpleDialogOption(
-              child: const Text('ignore'),
+              child: Text(dangerBtnText),
               onPressed: () => Navigator.pop(context, false),
             ),
           ),
           Container(
             color: Theme.of(context).colorScheme.primary.withGreen(120),
             child: SimpleDialogOption(
-              child: const Text('Save'),
+              child: Text(successBtnText),
               onPressed: () => Navigator.pop(context, true),
             ),
           )

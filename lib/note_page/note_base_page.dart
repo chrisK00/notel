@@ -3,7 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
-import 'package:notel/dialogs/save_changes_dialog.dart';
+import 'package:notel/dialogs/yes_or_no_dialog.dart';
 import 'package:notel/infrastructure/note.dart';
 import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/note_page/note_text_toolbar.dart';
@@ -59,7 +59,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   Future _showSaveDialog() async {
     if (_hasUnsavedChanges) {
       final shouldSave = await showDialog<bool>(
-          context: context, builder: (context) => const SaveChangesDialog());
+          context: context,
+          builder: (context) => const YesOrNoDialog(
+              title: "Save changes?",
+              dangerBtnText: "ignore",
+              successBtnText: "Save"));
 
       if (shouldSave == true) {
         await _onSave();
@@ -105,10 +109,22 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             padding: const EdgeInsets.only(top: 14),
             child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               PopupMenuButton<int>(
-                  icon: const Icon(Icons.more_vert),
+                  offset: Offset.fromDirection(3, 30),
+                  icon: const Icon(Icons.more_horiz),
                   onSelected: (selected) async {
                     switch (selected) {
                       case 1:
+                        final shouldCancel = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => const YesOrNoDialog(
+                                title: "Delete Note?",
+                                dangerBtnText: "Delete",
+                                successBtnText: "Cancel"));
+
+                        if (shouldCancel == null || shouldCancel) {
+                          return;
+                        }
+
                         await provider.remove(note.id);
                         note.displayText = "";
                         Navigator.pop(context);
@@ -130,7 +146,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, top: 7),
+            padding: const EdgeInsets.only(bottom: 10, top: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
