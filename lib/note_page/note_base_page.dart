@@ -53,6 +53,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     setState(() => _hasUnsavedChanges = true);
   }
 
+// TODO move this to edit page?
   void setCaretToEnd() =>
       controller.moveCursorToPosition(controller.document.length);
 
