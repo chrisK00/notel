@@ -147,7 +147,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, top: 10),
+            padding: const EdgeInsets.only(bottom: 10, top: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -162,7 +162,6 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                     onPressed: () async => await updateDate(provider),
                     child: Text(
                       DateFormat('d MMMM yyyy').format(note.date),
-                      // style: const TextStyle(color: Colors.black),
                     )),
                 saveButton()
               ],

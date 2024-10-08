@@ -63,7 +63,7 @@ class _AppState extends State<App> {
               currentPageIndex = 0;
             }),
           1 => setState(() {
-              currentPage = const SettingsPage();
+              currentPage = SettingsPage();
               currentPageIndex = 1;
             }),
           _ => throw UnimplementedError(),

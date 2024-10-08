@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/infrastructure/db.dart';
+import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/note_page/new_note_page.dart';
 import 'package:notel/utils/extensions.dart';
 import 'package:provider/provider.dart';
@@ -18,15 +20,26 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _searchTextController = TextEditingController();
+  final _settingsRepository = SettingsRepository(Db.instance);
+  var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
 
-  Future loadNotes() async {
+  Future<void> loadNotes() async {
     final loadedNotes = await HomePageRepository.loadNotes();
     final provider = Provider.of<NotesProvider>(context, listen: false);
     provider.init(loadedNotes);
   }
 
+  Future<void> loadSettings() async {
+    final settings = await _settingsRepository.get(
+        BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
+    setState(() {
+      _hideNoteTextSettings = settings;
+    });
+  }
+
   @override
   void initState() {
+    loadSettings();
     super.initState();
     loadNotes();
   }
@@ -133,7 +146,7 @@ class _HomePageState extends State<HomePage> {
             SizedBox(
               width: 250,
               child: Text(
-                n.displayText,
+                _hideNoteTextSettings.value ? "" : n.displayText,
                 overflow: TextOverflow.ellipsis,
                 maxLines: 3,
               ),
