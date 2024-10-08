@@ -2,6 +2,7 @@
 - display day of week 
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - option to hide note text on home page?
+- date filter
 - On search show keywords what searched for in description take that part that was searched fir e.g blodtryck search ser alla värden
 Enklast är nog bara att man highlightar alla occurrences och kanske visar i UI någon siffra på antal hittade matchningar. sen får man se till att onsave inte tar med de deltas som skapas
 - elm tycker title smart ide
