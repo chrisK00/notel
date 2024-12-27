@@ -58,6 +58,29 @@ class _SettingsPageState extends State<SettingsPage> {
               )
             ],
           ),
+          const SizedBox(
+            height: 20,
+          ),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                "Editor Shortcuts",
+                textScaler: TextScaler.linear(1.5),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text("Insert Time:  "),
+                  Text("..",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      )),
+                ],
+              )
+            ],
+          )
         ],
       ),
     );

@@ -15,6 +15,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   final FocusNode _focusNode = FocusNode();
   Note note = Note(id: 0);
   var _hasUnsavedChanges = false;
+  var _lastAddedText = "";
 
   @override
   void initState() {
@@ -48,9 +49,47 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  void onTextChanged(event) {
+  void _insertTimeShortcut(DocChange event) {
+    final operations = event.change.operations;
+
+    if (!operations.last.isInsert) {
+      return;
+    }
+
+    final addedText = operations.last.data as String;
+    if (addedText != "." ||
+        _lastAddedText != "." ||
+        controller.selection.baseOffset < 2) {
+      _lastAddedText = addedText;
+      return;
+    }
+
+    final hour = DateTime.now().hour.toString().padLeft(2, '0');
+    final minute = DateTime.now().minute.toString().padLeft(2, '0');
+    final replacementText = "$hour.$minute ";
+
+    final start = controller.selection.baseOffset - 2;
+    const length = 2;
+
+    controller.replaceText(start, length, replacementText,
+        TextSelection.collapsed(offset: start + replacementText.length));
+
+    controller.formatText(
+      start,
+      replacementText.length,
+      Attribute.bold,
+    );
+
+    controller.formatSelection(Attribute.clone(Attribute.bold, null));
+
+    _lastAddedText = addedText;
+  }
+
+  void onTextChanged(DocChange event) {
     log('Text changed: $event');
     setState(() => _hasUnsavedChanges = true);
+
+    _insertTimeShortcut(event);
   }
 
 // TODO move this to edit page?
