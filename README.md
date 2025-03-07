@@ -1,5 +1,7 @@
 ## Up for grabs 🔥
 - display day of week 
+- medicin flik idea
+flik med lista av mediciner, man kan klicka på och då läggs en new line in i dagens Note att man tagit den (samt stå vilken tid man tog den senast idag, den borde även kunna detektera om man skriver in manuellt i notes men då krävs mer komplex). man ska kunna välja i settings att medicin flik ska vara default start page?
 - tags/keywords e.g sök efter start auto complete eller ha tagg på note. $dia. man lan skapa egna såna text shortcuts? fan vad nice
 - option to hide note text on home page?
 - date filter
