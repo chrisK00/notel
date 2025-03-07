@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/note_page/note_base_page.dart';
 import 'package:notel/notes_provider.dart';
+import 'package:notel/utils/extensions.dart';
 
 class NewNotePage extends StatefulWidget {
   const NewNotePage({super.key});
@@ -20,7 +21,8 @@ class _NewNotePageState extends NoteBasePage<NewNotePage> {
   @override
   Future navigateToPreviousPage(
       BuildContext context, NotesProvider provider) async {
-    if (note.displayText.trim().isEmpty) {
+    if (note.displayText.isEmptyOrWhitespace() &&
+        note.title.isNullOrWhitespace()) {
       await provider.remove(note.id);
     } else {
       provider.add(note);

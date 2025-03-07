@@ -16,6 +16,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   Note note = Note(id: 0);
   var _hasUnsavedChanges = false;
   var _lastAddedText = "";
+  final TextEditingController textEditingController = TextEditingController();
 
   @override
   void initState() {
@@ -33,7 +34,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   Future initNote();
   Future navigateToPreviousPage(BuildContext context, NotesProvider provider);
 
-  Future _onSave() async {
+  Future _onSave(NotesProvider notesProvider) async {
     setState(() => _hasUnsavedChanges = false);
     final json = jsonEncode(controller.document.toDelta().toJson());
     try {
@@ -43,6 +44,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       note.displayText =
           Note.trimNoteDisplayText(controller.document.toPlainText());
       log('Updated rows $changesMade');
+
+      note.title = textEditingController.text;
+      final changesMadeForTitle =
+          await NotePageRepository.updateNoteTitle(note.id, note.title);
+      log('Updated titles $changesMadeForTitle');
+      await notesProvider.update(note.id);
     } catch (e) {
       setState(() => _hasUnsavedChanges = true);
       log('Update failed', error: e);
@@ -96,7 +103,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   void setCaretToEnd() =>
       controller.moveCursorToPosition(controller.document.length);
 
-  Future _showSaveDialog() async {
+  Future _showSaveDialog(NotesProvider notesProvider) async {
     if (_hasUnsavedChanges) {
       final shouldSave = await showDialog<bool>(
           context: context,
@@ -106,7 +113,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
               successBtnText: "Save"));
 
       if (shouldSave == true) {
-        await _onSave();
+        await _onSave(notesProvider);
       }
     }
   }
@@ -140,13 +147,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     });
   }
 
-  Widget actions(BuildContext context, NotesProvider provider) {
+  Widget actions(BuildContext context, NotesProvider notesProvider) {
     return Padding(
       padding: const EdgeInsets.only(right: 5, left: 5),
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 14),
+            padding: const EdgeInsets.only(top: 10),
             child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               PopupMenuButton<int>(
                   offset: Offset.fromDirection(3, 30),
@@ -165,7 +172,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                           return;
                         }
 
-                        await provider.remove(note.id);
+                        await notesProvider.remove(note.id);
                         note.displayText = "";
                         Navigator.pop(context);
                         break;
@@ -186,23 +193,38 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 10, top: 15),
+            padding: const EdgeInsets.only(bottom: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
                     iconSize: 30,
                     onPressed: () async {
-                      await _showSaveDialog();
+                      await _showSaveDialog(notesProvider);
                       Navigator.pop(context);
                     },
                     icon: const Icon(Icons.arrow_back)),
-                TextButton(
-                    onPressed: () async => await updateDate(provider),
-                    child: Text(
-                      DateFormat('d MMMM yyyy').format(note.date),
-                    )),
-                saveButton()
+                Column(
+                  children: [
+                    TextButton(
+                        onPressed: () async => await updateDate(notesProvider),
+                        child: Text(
+                          DateFormat('d MMMM yyyy').format(note.date),
+                        )),
+                    SizedBox(
+                      width: 250,
+                      height: 40,
+                      child: Opacity(
+                          opacity: 0.9,
+                          child: TextField(
+                            controller: textEditingController,
+                            onChanged: (_) =>
+                                setState(() => _hasUnsavedChanges = true),
+                          )),
+                    )
+                  ],
+                ),
+                saveButton(notesProvider)
               ],
             ),
           ),
@@ -228,12 +250,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     }
   }
 
-  Widget saveButton() {
+  Widget saveButton(notesProvider) {
     return Opacity(
       opacity: _hasUnsavedChanges ? 1 : 0,
       child: IconButton(
           iconSize: 30,
-          onPressed: () async => _onSave(),
+          onPressed: () async => _onSave(notesProvider),
           icon: Icon(Icons.save, color: Theme.of(context).colorScheme.primary)),
     );
   }

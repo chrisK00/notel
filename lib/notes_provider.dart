@@ -17,9 +17,16 @@ class NotesProvider extends ChangeNotifier {
 
   Future update(int noteId) async {
     final note = await HomePageRepository.loadNote(noteId);
+    if (note == null) {
+      return;
+    }
+
     final index = _notes.indexWhere((note) => note.id == noteId);
-    _notes[index].date = note.date;
-    _notes[index].displayText = note.displayText;
+    if (index != -1) {
+      _notes[index].date = note.date;
+      _notes[index].displayText = note.displayText;
+      _notes[index].title = note.title;
+    }
 
     _sortNotes();
     notifyListeners();

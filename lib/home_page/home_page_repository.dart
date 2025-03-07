@@ -10,7 +10,8 @@ class HomePageRepository {
         SELECT
           id,
           substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 36) text,
-          date
+          date,
+          title
         FROM NOTE
         ORDER BY date DESC
         ''');
@@ -18,17 +19,18 @@ class HomePageRepository {
     return rows.map(Note.fromMap);
   }
 
-  static Future<Note> loadNote(int noteId) async {
+  static Future<Note?> loadNote(int noteId) async {
     final rows = await Db.instance.rawQuery(r'''
         SELECT
           id,
           substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 100) text,
-          date
+          date,
+          title
         FROM NOTE
         WHERE id = ?
         ''', [noteId]);
 
-    return rows.map(Note.fromMap).first;
+    return rows.length == 1 ? rows.map(Note.fromMap).first : null;
   }
 
   static Future<Iterable<Note>> findNotesByText(text) async {
@@ -37,12 +39,13 @@ class HomePageRepository {
         SELECT
           NOTE.id,
           substr((CASE WHEN LENGTH(text) > 0 THEN json_extract(text, '$[0].insert') ELSE '' END), 0, 100) text,
-          date
+          date,
+          title
         FROM Note,
         json_each(Note.text) AS json_data
-        WHERE json_extract(json_data.value, '$.insert') LIKE ?
+        WHERE json_extract(json_data.value, '$.insert') LIKE ? OR title LIKE ?
         ORDER BY Note.date DESC
-        ''', ['%$text%']);
+        ''', ['%$text%', '%$text%']);
       return rows.map(Note.fromMap);
     }
   }

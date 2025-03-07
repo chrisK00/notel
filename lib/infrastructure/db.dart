@@ -11,6 +11,25 @@ class Db {
   // ignore: null_check_always_fails
   static Database instance = null!;
 
+  static Future<void> _upgradeDatabase(db, oldVersion, newVersion) async {
+    if (oldVersion < 2) {
+      await _version2(db);
+    }
+
+    if (oldVersion < 3) {
+      await _version3(db);
+    }
+  }
+
+  static Future<void> _setupDatabase(Database db, int version) async {
+    db.execute("""CREATE TABLE Note(
+  id INTEGER PRIMARY KEY, text TEXT, date TEXT
+  )""");
+
+    await _version2(db);
+    await _version3(db);
+  }
+
   static Future<void> _version2(Database db) async {
     db.execute("""CREATE TABLE Settings(
   id TEXT PRIMARY KEY, value TEXT
@@ -20,18 +39,9 @@ class Db {
         BoolSettings(BoolSettings.hideNoteTextKey, false).toMap);
   }
 
-  static Future<void> _setupDatabase(Database db, int version) async {
-    db.execute("""CREATE TABLE Note(
-  id INTEGER PRIMARY KEY, text TEXT, date TEXT
-  )""");
-
-    await _version2(db);
-  }
-
-  static Future<void> _upgradeDatabase(db, oldVersion, newVersion) async {
-    if (oldVersion < 2) {
-      await _version2(db);
-    }
+  static Future<void> _version3(Database db) async {
+    db.execute("""ALTER TABLE Note
+  ADD COLUMN title TEXT""");
   }
 
   static Future initialize() async {
@@ -40,6 +50,6 @@ class Db {
         path.join(documentsDirectory.path, databaseName),
         onCreate: _setupDatabase,
         onUpgrade: _upgradeDatabase,
-        version: 2);
+        version: 3);
   }
 }

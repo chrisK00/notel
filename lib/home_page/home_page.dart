@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notel/infrastructure/db.dart';
@@ -112,6 +114,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   GestureDetector noteRow(BuildContext context, Note n) {
+    log("Title ${n.title}");
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () async {
@@ -145,11 +148,16 @@ class _HomePageState extends State<HomePage> {
             ),
             SizedBox(
               width: 250,
-              child: Text(
-                _hideNoteTextSettings.value ? "" : n.displayText,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 3,
-              ),
+              child: n.title.isNullOrWhitespace()
+                  ? Text(
+                      _hideNoteTextSettings.value ? "" : n.displayText,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 3,
+                    )
+                  : Text(n.title!,
+                      textScaler: const TextScaler.linear(1.2),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 2),
             ),
           ],
         ));

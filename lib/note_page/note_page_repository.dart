@@ -30,6 +30,11 @@ class NotePageRepository {
         where: 'id = ?', whereArgs: [noteId]);
   }
 
+  static Future<int> updateNoteTitle(int noteId, String? title) async {
+    return await Db.instance.update(Db.noteTable, {'title': title},
+        where: 'id = ?', whereArgs: [noteId]);
+  }
+
   static Future<int> updateNoteDate(int noteId, DateTime date) async {
     return await Db.instance.update(Db.noteTable, {'date': date.toString()},
         where: 'id = ?', whereArgs: [noteId]);
