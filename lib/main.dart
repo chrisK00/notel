@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:notel/settings_page/settings_page_repository.dart';
 import 'package:notel/utils/db_seed.dart';
 import 'package:provider/provider.dart';
 
@@ -67,7 +65,7 @@ class _AppState extends State<App> {
               currentPageIndex = 0;
             }),
           1 => setState(() {
-              currentPage = SettingsPage();
+              currentPage = const SettingsPage();
               currentPageIndex = 1;
             }),
           _ => throw UnimplementedError(),

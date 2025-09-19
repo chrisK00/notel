@@ -27,9 +27,13 @@ flutter build apk --split-per-abi
 - Log output
 Filter !D/, !I/, !E/, !W/
 
-## Getting Started
+## Updating Gradle
+First Update com.android.application in settings.gradle file id "com.android.application" version "8.3.2" apply false
 
+After That come in gradle folder inside wrapper folder you'll find gradle-wrapper.properties add this:
 
+distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-all.zip
+Then Restart the IDE
 
 ## Guides
 - [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)

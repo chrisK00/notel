@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/console.dart';
 import 'package:notel/dialogs/yes_or_no_dialog.dart';
 import 'package:notel/infrastructure/note.dart';
 import 'package:notel/note_page/note_page_repository.dart';
@@ -38,21 +38,18 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     setState(() => _hasUnsavedChanges = false);
     final json = jsonEncode(controller.document.toDelta().toJson());
     try {
-      final changesMade =
-          await NotePageRepository.updateNoteText(note.id, json);
+      final changesMade = await NotePageRepository.updateNoteText(note.id, json);
 
-      note.displayText =
-          Note.trimNoteDisplayText(controller.document.toPlainText());
-      log('Updated rows $changesMade');
+      note.displayText = Note.trimNoteDisplayText(controller.document.toPlainText());
+      writeLine('Updated rows $changesMade');
 
       note.title = textEditingController.text;
-      final changesMadeForTitle =
-          await NotePageRepository.updateNoteTitle(note.id, note.title);
-      log('Updated titles $changesMadeForTitle');
+      final changesMadeForTitle = await NotePageRepository.updateNoteTitle(note.id, note.title);
+      writeLine('Updated titles $changesMadeForTitle');
       await notesProvider.update(note.id);
     } catch (e) {
       setState(() => _hasUnsavedChanges = true);
-      log('Update failed', error: e);
+      writeLine('Update failed, error: $e');
     }
   }
 
@@ -64,9 +61,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     }
 
     final addedText = operations.last.data as String;
-    if (addedText != "." ||
-        _lastAddedText != "." ||
-        controller.selection.baseOffset < 2) {
+    if (addedText != "." || _lastAddedText != "." || controller.selection.baseOffset < 2) {
       _lastAddedText = addedText;
       return;
     }
@@ -78,8 +73,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     final start = controller.selection.baseOffset - 2;
     const length = 2;
 
-    controller.replaceText(start, length, replacementText,
-        TextSelection.collapsed(offset: start + replacementText.length));
+    controller.replaceText(
+        start, length, replacementText, TextSelection.collapsed(offset: start + replacementText.length));
 
     controller.formatText(
       start,
@@ -93,24 +88,21 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
   void onTextChanged(DocChange event) {
-    log('Text changed: $event');
+    writeLine('Text changed: $event');
     setState(() => _hasUnsavedChanges = true);
 
     _insertTimeShortcut(event);
   }
 
 // TODO move this to edit page?
-  void setCaretToEnd() =>
-      controller.moveCursorToPosition(controller.document.length);
+  void setCaretToEnd() => controller.moveCursorToPosition(controller.document.length);
 
   Future _showSaveDialog(NotesProvider notesProvider) async {
     if (_hasUnsavedChanges) {
       final shouldSave = await showDialog<bool>(
           context: context,
-          builder: (context) => const YesOrNoDialog(
-              title: "Save changes?",
-              dangerBtnText: "ignore",
-              successBtnText: "Save"));
+          builder: (context) =>
+              const YesOrNoDialog(title: "Save changes?", dangerBtnText: "ignore", successBtnText: "Save"));
 
       if (shouldSave == true) {
         await _onSave(notesProvider);
@@ -137,8 +129,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                     configurations: QuillEditorConfigurations(
                         autoFocus: true,
                         controller: controller,
-                        padding:
-                            const EdgeInsets.only(left: 25, right: 25, top: 20),
+                        padding: const EdgeInsets.only(left: 25, right: 25, top: 20),
                         expands: true))),
             NoteTextToolbar(controller: controller),
           ],
@@ -148,15 +139,16 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
   Widget actions(BuildContext context, NotesProvider notesProvider) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 5, left: 5),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+    return SafeArea(
+      bottom: false,
+      top: true,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 5, left: 5),
+        child: Column(
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               PopupMenuButton<int>(
-                  offset: Offset.fromDirection(3, 30),
+                  offset: Offset.fromDirection(3, 10),
                   icon: const Icon(Icons.more_horiz),
                   onSelected: (selected) async {
                     switch (selected) {
@@ -164,9 +156,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         final shouldCancel = await showDialog<bool>(
                             context: context,
                             builder: (context) => const YesOrNoDialog(
-                                title: "Delete Note?",
-                                dangerBtnText: "Delete",
-                                successBtnText: "Cancel"));
+                                title: "Delete Note?", dangerBtnText: "Delete", successBtnText: "Cancel"));
 
                         if (shouldCancel == null || shouldCancel) {
                           return;
@@ -179,8 +169,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       default:
                     }
                   },
-                  iconColor:
-                      Theme.of(context).colorScheme.secondary.withOpacity(0.7),
+                  iconColor: Theme.of(context).colorScheme.secondary.withOpacity(0.7),
                   itemBuilder: (context) => [
                         const PopupMenuItem<int>(
                           value: 1,
@@ -191,44 +180,43 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         )
                       ])
             ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                    iconSize: 30,
-                    onPressed: () async {
-                      await _showSaveDialog(notesProvider);
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.arrow_back)),
-                Column(
-                  children: [
-                    TextButton(
-                        onPressed: () async => await updateDate(notesProvider),
-                        child: Text(
-                          DateFormat('d MMMM yyyy').format(note.date),
-                        )),
-                    SizedBox(
-                      width: 250,
-                      height: 40,
-                      child: Opacity(
-                          opacity: 0.9,
-                          child: TextField(
-                            controller: textEditingController,
-                            onChanged: (_) =>
-                                setState(() => _hasUnsavedChanges = true),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  IconButton(
+                      iconSize: 30,
+                      onPressed: () async {
+                        await _showSaveDialog(notesProvider);
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.arrow_back)),
+                  Column(
+                    children: [
+                      TextButton(
+                          onPressed: () async => await updateDate(notesProvider),
+                          child: Text(
+                            DateFormat('d MMMM yyyy').format(note.date),
                           )),
-                    )
-                  ],
-                ),
-                saveButton(notesProvider)
-              ],
+                      SizedBox(
+                        width: 250,
+                        height: 40,
+                        child: Opacity(
+                            opacity: 0.9,
+                            child: TextField(
+                              controller: textEditingController,
+                              onChanged: (_) => setState(() => _hasUnsavedChanges = true),
+                            )),
+                      )
+                    ],
+                  ),
+                  saveButton(notesProvider)
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

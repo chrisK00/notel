@@ -1,7 +1,6 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/console.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/note_page/new_note_page.dart';
@@ -32,8 +31,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadSettings() async {
-    final settings = await _settingsRepository.get(
-        BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
+    final settings = await _settingsRepository.get(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
     setState(() {
       _hideNoteTextSettings = settings;
     });
@@ -57,8 +55,7 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: ListView.separated(
                   key: const PageStorageKey('notesListKey'),
-                  itemBuilder: (context, index) =>
-                      noteRow(context, provider.notes[index]),
+                  itemBuilder: (context, index) => noteRow(context, provider.notes[index]),
                   separatorBuilder: (_, __) => const Divider(),
                   itemCount: provider.notes.length),
             ),
@@ -114,12 +111,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   GestureDetector noteRow(BuildContext context, Note n) {
-    log("Title ${n.title}");
+    writeLine("Title ${n.title}");
     return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () async {
-          await Navigator.push(context,
-              MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
+          await Navigator.push(context, MaterialPageRoute(builder: (c) => EditPage(noteId: n.id)));
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -128,13 +124,11 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   DateTime.now().isSameDate(n.date) ? 'today' : '',
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   n.date.day.toString(),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 20),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                 ),
                 Text(
                   DateFormat('MMMM').format(n.date),
@@ -155,9 +149,7 @@ class _HomePageState extends State<HomePage> {
                       maxLines: 3,
                     )
                   : Text(n.title!,
-                      textScaler: const TextScaler.linear(1.2),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2),
+                      textScaler: const TextScaler.linear(1.2), overflow: TextOverflow.ellipsis, maxLines: 2),
             ),
           ],
         ));
@@ -166,8 +158,7 @@ class _HomePageState extends State<HomePage> {
   FloatingActionButton addNoteButton(BuildContext context) {
     return FloatingActionButton(
       onPressed: () async {
-        await Navigator.push(
-            context, MaterialPageRoute(builder: (c) => const NewNotePage()));
+        await Navigator.push(context, MaterialPageRoute(builder: (c) => const NewNotePage()));
       },
       child: const Icon(
         Icons.add,
