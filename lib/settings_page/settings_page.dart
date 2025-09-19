@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
@@ -15,9 +17,9 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
+  var _message = "";
 
-  final SettingsRepository _settingsRepository =
-      SettingsRepository(Db.instance);
+  final SettingsRepository _settingsRepository = SettingsRepository(Db.instance);
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _SettingsPageState extends State<SettingsPage> {
       alignment: Alignment.center,
       child: Column(
         children: [
+          Text(_message),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -43,6 +46,20 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Icon(
                     Icons.save_alt,
                   ))
+            ],
+          ),
+          const SizedBox(
+            height: 10,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              const Text('Import Notes'),
+              ElevatedButton(
+                  onPressed: importNotes,
+                  child: const Icon(
+                    Icons.input,
+                  )),
             ],
           ),
           const SizedBox(
@@ -101,20 +118,45 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> toggleHideNoteText(bool newSettings) async {
     setState(() => _hideNoteSettings.value = newSettings);
-    await _settingsRepository.insertOrUpdate(
-        _hideNoteSettings.id, _hideNoteSettings.toMap);
+    await _settingsRepository.insertOrUpdate(_hideNoteSettings.id, _hideNoteSettings.toMap);
   }
 
-  void exportNotes() async {
-    final notes = await SettingsPageRepository.getNotes();
-    final notesJson = jsonEncode(notes);
-    Share.share(notesJson, subject: 'notes.json');
+  Future<void> exportNotes() async {
+    try {
+      final notes = await SettingsPageRepository.getNotes();
+      final notesJson = jsonEncode(notes);
+      Share.share(notesJson, subject: 'notes.json');
+      _message = '';
+    } catch (e) {
+      setState(() => _message = e.toString());
+    }
   }
 
-// TODO
-  void importNotes() {
-// select file
-// List<Map<String, dynamic>> decodedNotesJson = jsonDecode(notesJson);
-// final notes = decodedJson.map((x) => Note.fromMap(x)).toList();
+  Future<void> importNotes() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles();
+
+      if (result == null) {
+        return;
+      }
+
+      final file = File(result.files.single.path!);
+      final fileContent = await file.readAsString();
+      final List<dynamic> notesDynamicJson = jsonDecode(fileContent);
+
+      final List<Map<String, Object?>> notesJson =
+          notesDynamicJson.map<Map<String, Object?>>((e) => Map<String, Object?>.from(e)).toList();
+
+      if (notesJson.isEmpty) {
+        _message = 'Found 0 notes to import';
+        return;
+      }
+
+      await SettingsPageRepository.insertNotes(notesJson);
+
+      _message = '';
+    } catch (e) {
+      setState(() => _message = e.toString());
+    }
   }
 }

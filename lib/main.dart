@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:notel/settings_page/settings_page_repository.dart';
 import 'package:notel/utils/db_seed.dart';
 import 'package:provider/provider.dart';
 
@@ -17,15 +19,17 @@ void main() async {
     sqfliteFfiInit();
   }
 
+// TODO försiktig på att köra detta på existerande machine, kan ta bort DBn!! borde döpa om appen if in debug
   databaseFactory = databaseFactoryFfi;
   await Db.initialize();
+
+// TODO comment if running this locally
   if (kDebugMode) {
     log('Db seed');
     await DebugUtil.seedDatabase();
   }
 
-  runApp(ChangeNotifierProvider(
-      create: (context) => NotesProvider(), child: const App()));
+  runApp(ChangeNotifierProvider(create: (context) => NotesProvider(), child: const App()));
 }
 
 class App extends StatefulWidget {
@@ -43,8 +47,8 @@ class _AppState extends State<App> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'notel',
-      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
-          scaffoldBackgroundColor: const Color.fromARGB(255, 40, 40, 40)),
+      darkTheme:
+          ThemeData.dark(useMaterial3: true).copyWith(scaffoldBackgroundColor: const Color.fromARGB(255, 40, 40, 40)),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
