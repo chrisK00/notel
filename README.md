@@ -48,3 +48,6 @@ Then Restart the IDE
 - Provider state https://docs.flutter.dev/data-and-backend/state-mgmt/simple
 - callbacks https://www.digitalocean.com/community/tutorials/flutter-widget-communication
 - tips and tricks https://github.com/vandadnp/flutter-tips-and-tricks?tab=readme-ov-file
+
+## Icons
+https://api.flutter.dev/flutter/material/Icons-class.html
