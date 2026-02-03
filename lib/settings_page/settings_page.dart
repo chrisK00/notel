@@ -124,9 +124,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> exportNotes() async {
     try {
       final notes = await SettingsPageRepository.getNotes();
+      setState(() => _message = "fetched ${notes.length} notes");
+
       final notesJson = jsonEncode(notes);
-      Share.share(notesJson, subject: 'notes.json');
-      _message = '';
+      setState(() => _message = "json encoded notes");
+
+      var result = await Share.share(notesJson, subject: 'notes.json');
+      setState(() => _message = "${result.status}: ${result.raw}");
     } catch (e) {
       setState(() => _message = e.toString());
     }
