@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'settings_page_repository.dart';
@@ -127,10 +129,30 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _message = "fetched ${notes.length} notes");
 
       final notesJson = jsonEncode(notes);
-      setState(() => _message = "json encoded notes");
 
-      var result = await Share.share(notesJson, subject: 'notes.json');
-      setState(() => _message = "${result.status}: ${result.raw}");
+      final targetDir = await getTemporaryDirectory();
+
+      final fileName = 'notel_notes_${DateFormat('yyyyMMdd').format(DateTime.now())}.json';
+      final filePath = '${targetDir.path}/$fileName';
+
+      final file = File(filePath);
+      await file.writeAsString(notesJson);
+      setState(() => _message = 'created file');
+
+      final result = await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: fileName,
+      );
+
+      if (result.status == ShareResultStatus.success) {
+        _message = "";
+      } else {
+        setState(() => _message = "${result.status}: ${result.raw}");
+      }
+
+      if (await file.exists()) {
+        await file.delete();
+      }
     } catch (e) {
       setState(() => _message = e.toString());
     }
