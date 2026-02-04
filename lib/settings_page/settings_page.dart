@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
+import 'package:notel/utils/simple_encryptor.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -105,6 +106,25 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<String?> _promptForEncryptionKey() async {
+    String? value;
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Backup password"),
+        content: TextField(
+          obscureText: true,
+          decoration: const InputDecoration(hintText: "Enter password"),
+          onChanged: (v) => value = v,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK")),
+        ],
+      ),
+    );
+    return value;
+  }
+
   void showToast(BuildContext context, String message) {
     final snackBar = SnackBar(
       content: const Text("Changes saved. Restart to apply"),
@@ -125,18 +145,21 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> exportNotes() async {
     try {
+      final encryptionKey = await _promptForEncryptionKey();
+      if (encryptionKey == null || encryptionKey.isEmpty) return;
+
       final notes = await SettingsPageRepository.getNotes();
       setState(() => _message = "fetched ${notes.length} notes");
 
-      final notesJson = jsonEncode(notes);
+      final encrypted = SimpleEncryptor.encode(jsonEncode(notes), encryptionKey);
 
       final targetDir = await getTemporaryDirectory();
 
-      final fileName = 'notel_notes_${DateFormat('yyyyMMdd').format(DateTime.now())}.json';
+      final fileName = 'notel_notes_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
       final filePath = '${targetDir.path}/$fileName';
 
       final file = File(filePath);
-      await file.writeAsString(notesJson);
+      await file.writeAsString(encrypted);
       setState(() => _message = 'created file');
 
       final result = await Share.shareXFiles(
@@ -145,16 +168,16 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (result.status == ShareResultStatus.success) {
-        _message = "";
+        setState(() => _message = 'Export complete');
       } else {
-        setState(() => _message = "${result.status}: ${result.raw}");
+        setState(() => _message = '${result.status}: ${result.raw}');
       }
 
       if (await file.exists()) {
         await file.delete();
       }
     } catch (e) {
-      setState(() => _message = e.toString());
+      setState(() => _message = 'Error: ${e.toString()}');
     }
   }
 
@@ -166,23 +189,34 @@ class _SettingsPageState extends State<SettingsPage> {
         return;
       }
 
+      final encryptionKey = await _promptForEncryptionKey();
+      if (encryptionKey == null || encryptionKey.isEmpty) return;
+
       final file = File(result.files.single.path!);
       final fileContent = await file.readAsString();
-      final List<dynamic> notesDynamicJson = jsonDecode(fileContent);
+
+      var decryptedJson = SimpleEncryptor.decrypt(fileContent, encryptionKey);
+
+      setState(() => _message = 'Decrypted notes');
+      final List<dynamic> notesDynamicJson = jsonDecode(decryptedJson);
 
       final List<Map<String, Object?>> notesJson =
           notesDynamicJson.map<Map<String, Object?>>((e) => Map<String, Object?>.from(e)).toList();
 
       if (notesJson.isEmpty) {
-        _message = 'Found 0 notes to import';
+        setState(() => _message = 'Found 0 notes to import');
         return;
       }
 
       await SettingsPageRepository.insertNotes(notesJson);
 
-      _message = '';
+      setState(() => _message = 'Import complete');
     } catch (e) {
-      setState(() => _message = e.toString());
+      if (e.toString().contains('integrity') || e.toString().contains('padding')) {
+        setState(() => _message = 'Wrong encryption key!');
+      } else {
+        setState(() => _message = 'Error: ${e.toString()}');
+      }
     }
   }
 }
