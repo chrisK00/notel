@@ -90,6 +90,10 @@ class Db {
           if (!hasCategoryId) {
             await db.execute("ALTER TABLE Note ADD COLUMN categoryId INTEGER");
           }
+          final hasLastModified = columns.any((c) => c['name'] == 'lastModified');
+          if (!hasLastModified) {
+            await db.execute("ALTER TABLE Note ADD COLUMN lastModified TEXT");
+          }
         },
         version: 5);
   }

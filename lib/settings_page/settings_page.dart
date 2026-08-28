@@ -3,11 +3,14 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/home_page/home_page_repository.dart';
 import 'package:notel/infrastructure/auto_backup_service.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
+import 'package:notel/notes_provider.dart';
 import 'package:notel/utils/simple_encryptor.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'settings_page_repository.dart';
@@ -481,6 +484,13 @@ class _SettingsPageState extends State<SettingsPage> {
       final dynamic decoded = jsonDecode(decryptedJson);
 
       await SettingsPageRepository.restoreBackupPayload(decoded);
+
+      if (mounted) {
+        final provider = Provider.of<NotesProvider>(context, listen: false);
+        await provider.loadCategories();
+        final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+        provider.init(loadedNotes);
+      }
 
       setState(() => _message = 'Import complete');
     } catch (e) {
