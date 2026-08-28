@@ -29,8 +29,6 @@ class _EditPageState extends NoteBasePage<EditPage> {
       if (widget.highlightQuery != null) {
         highlightSearchTerms(widget.highlightQuery);
       }
-      controller.document.changes.listen(onTextChanged);
-      if (mounted) setState(() => hasUnsavedChanges = false);
       return;
     }
 
@@ -42,9 +40,6 @@ class _EditPageState extends NoteBasePage<EditPage> {
     if (widget.highlightQuery != null) {
       highlightSearchTerms(widget.highlightQuery);
     }
-
-    controller.document.changes.listen(onTextChanged);
-    if (mounted) setState(() => hasUnsavedChanges = false);
   }
 
   @override

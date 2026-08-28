@@ -25,6 +25,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String _autoBackupDirectory = "";
   String _autoBackupPassword = "";
   String? _autoBackupLastDate;
+  String _timeShortcut = "..";
   String _message = "";
 
   final SettingsRepository _settingsRepository = SettingsRepository(Db.instance);
@@ -56,6 +57,10 @@ class _SettingsPageState extends State<SettingsPage> {
       StringSettings.autoBackupLastDateKey,
       StringSettings.fromMap,
     );
+    final timeShortcut = await _settingsRepository.getOrNull(
+      StringSettings.timeShortcutKey,
+      StringSettings.fromMap,
+    );
 
     if (!mounted) return;
     setState(() {
@@ -64,6 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _autoBackupDirectory = autoDir?.value ?? "";
       _autoBackupPassword = autoPass?.value ?? "";
       _autoBackupLastDate = autoDate?.value;
+      _timeShortcut = timeShortcut?.value ?? "..";
     });
   }
 
@@ -229,18 +235,92 @@ class _SettingsPageState extends State<SettingsPage> {
           // --- Editor Shortcuts ---
           const Text('Editor Shortcuts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(Icons.access_time),
-              title: Text('Insert Current Time'),
-              subtitle: Text('Type ".." in the note editor to insert timestamp'),
-              trailing: Text('..', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              leading: const Icon(Icons.access_time),
+              title: const Text('Insert Current Time'),
+              subtitle: Text(_timeShortcut.isEmpty
+                  ? 'Disabled (tap to configure)'
+                  : 'Type "$_timeShortcut" in note editor to insert timestamp'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _timeShortcut.isEmpty ? 'Off' : _timeShortcut,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.edit_outlined, size: 18),
+                ],
+              ),
+              onTap: _editTimeShortcut,
             ),
           ),
           const SizedBox(height: 30),
         ],
       ),
     );
+  }
+
+  Future<void> _editTimeShortcut() async {
+    final textController = TextEditingController(text: _timeShortcut);
+    final result = await showDialog<String?>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Insert Time Shortcut'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter the characters typed in the note editor to instantly insert the current timestamp (e.g. 14.30).\n\nLeave blank to disable.',
+                style: TextStyle(fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Shortcut sequence',
+                  hintText: 'e.g. .. or // or ::',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogCtx, textController.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      await _settingsRepository.insertOrUpdate(
+        StringSettings.timeShortcutKey,
+        () => StringSettings(StringSettings.timeShortcutKey, result).toMap(),
+      );
+      setState(() => _timeShortcut = result);
+    }
   }
 
   String _formatLastBackupDate(String isoString) {

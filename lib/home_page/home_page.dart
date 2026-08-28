@@ -45,8 +45,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> loadSettings() async {
-    final settings = await _settingsRepository.get(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
-    if (!mounted) return;
+    final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
+    if (!mounted || settings == null) return;
     setState(() {
       _hideNoteTextSettings = settings;
     });

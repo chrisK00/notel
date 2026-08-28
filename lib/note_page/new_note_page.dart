@@ -17,7 +17,6 @@ class _NewNotePageState extends NoteBasePage<NewNotePage> {
   @override
   Future initNote() async {
     note = await NotePageRepository.createNote(categoryId: widget.categoryId);
-    controller.document.changes.listen(onTextChanged);
   }
 
   @override

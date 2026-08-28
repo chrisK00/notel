@@ -26,6 +26,7 @@ class StringSettings {
   static const autoBackupDirectoryKey = "autoBackupDirectory";
   static const autoBackupPasswordKey = "autoBackupPassword";
   static const autoBackupLastDateKey = "autoBackupLastDate";
+  static const timeShortcutKey = "timeShortcutKey";
 
   factory StringSettings.fromMap(Map<String, dynamic> map) =>
       StringSettings(map['id'], map['value'] as String);

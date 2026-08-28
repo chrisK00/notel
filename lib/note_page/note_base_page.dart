@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -7,7 +8,9 @@ import 'package:notel/dialogs/yes_or_no_dialog.dart';
 import 'package:notel/infrastructure/auto_backup_service.dart';
 import 'package:notel/infrastructure/category.dart';
 import 'package:notel/infrastructure/date_only.dart';
+import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/note.dart';
+import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/main.dart';
 import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/note_page/note_text_toolbar.dart';
@@ -21,27 +24,53 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   final FocusNode _focusNode = FocusNode();
   Note note = Note(id: 0);
   var hasUnsavedChanges = false;
-  var _lastAddedText = "";
+  String timeShortcut = "..";
   final TextEditingController textEditingController = TextEditingController();
+  StreamSubscription<DocChange>? _docChangeSub;
 
   List<({int offset, int length})> searchMatches = [];
   int searchMatchIndex = 0;
   bool showSearchNavigator = false;
   String searchTermsSummary = '';
 
+  void attachDocListener() {
+    _docChangeSub?.cancel();
+    _docChangeSub = controller.document.changes.listen(onTextChanged);
+  }
+
+  void detachDocListener() {
+    _docChangeSub?.cancel();
+    _docChangeSub = null;
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadTimeShortcut();
     initNote().then((_) {
       if (mounted) {
         if (searchMatches.isEmpty) setCaretToEnd();
+        attachDocListener();
         setState(() => hasUnsavedChanges = false);
       }
     });
   }
 
+  Future<void> _loadTimeShortcut() async {
+    try {
+      final setting = await SettingsRepository(Db.instance).getOrNull(
+        StringSettings.timeShortcutKey,
+        StringSettings.fromMap,
+      );
+      if (setting != null) {
+        timeShortcut = setting.value;
+      }
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    detachDocListener();
     controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -49,8 +78,6 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   Future initNote();
   Future navigateToPreviousPage(BuildContext context, NotesProvider provider);
-
-  bool _isApplyingSearchHighlight = false;
 
   void highlightSearchTerms(SearchQuery? query) {
     if (query == null || query.isEmpty) return;
@@ -80,17 +107,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     matches.sort((a, b) => a.offset.compareTo(b.offset));
 
     final wasUnsaved = hasUnsavedChanges;
-    _isApplyingSearchHighlight = true;
+    detachDocListener();
     const highlightAttr = BackgroundAttribute('#FFE082');
     for (final m in matches) {
       controller.formatText(m.offset, m.length, highlightAttr);
     }
-    Future.microtask(() {
-      _isApplyingSearchHighlight = false;
-      if (mounted && !wasUnsaved) {
-        setState(() => hasUnsavedChanges = false);
-      }
-    });
+    attachDocListener();
 
     setState(() {
       hasUnsavedChanges = wasUnsaved;
@@ -131,22 +153,22 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   void clearSearchHighlights() {
     if (searchMatches.isNotEmpty) {
       final wasUnsaved = hasUnsavedChanges;
-      _isApplyingSearchHighlight = true;
+      detachDocListener();
       final clearAttr = Attribute.clone(Attribute.background, null);
       for (final m in searchMatches) {
         controller.formatText(m.offset, m.length, clearAttr);
       }
-      Future.microtask(() {
-        _isApplyingSearchHighlight = false;
-        if (mounted && !wasUnsaved) {
-          setState(() => hasUnsavedChanges = false);
-        }
+      attachDocListener();
+      setState(() {
+        hasUnsavedChanges = wasUnsaved;
+        searchMatches = [];
+        showSearchNavigator = false;
+      });
+    } else {
+      setState(() {
+        showSearchNavigator = false;
       });
     }
-    setState(() {
-      searchMatches = [];
-      showSearchNavigator = false;
-    });
   }
 
   Future _onSave(NotesProvider notesProvider) async {
@@ -174,32 +196,34 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
   void _insertTimeShortcut(DocChange event) {
-    final operations = event.change.operations;
+    if (timeShortcut.isEmpty) return;
 
-    if (!operations.last.isInsert) {
-      return;
-    }
+    final operations = event.change.operations;
+    if (operations.isEmpty || !operations.last.isInsert) return;
 
     final data = operations.last.data;
-    if (data is! String) {
-      return;
-    }
+    if (data is! String) return;
 
-    final addedText = data;
-    if (addedText != "." || _lastAddedText != "." || controller.selection.baseOffset < 2) {
-      _lastAddedText = addedText;
-      return;
-    }
+    final baseOffset = controller.selection.baseOffset;
+    if (baseOffset < timeShortcut.length) return;
+
+    final plainText = controller.document.toPlainText();
+    final start = baseOffset - timeShortcut.length;
+    if (start < 0 || start + timeShortcut.length > plainText.length) return;
+
+    final typedSegment = plainText.substring(start, start + timeShortcut.length);
+    if (typedSegment != timeShortcut) return;
 
     final hour = DateTime.now().hour.toString().padLeft(2, '0');
     final minute = DateTime.now().minute.toString().padLeft(2, '0');
     final replacementText = "$hour.$minute ";
 
-    final start = controller.selection.baseOffset - 2;
-    const length = 2;
-
     controller.replaceText(
-        start, length, replacementText, TextSelection.collapsed(offset: start + replacementText.length));
+      start,
+      timeShortcut.length,
+      replacementText,
+      TextSelection.collapsed(offset: start + replacementText.length),
+    );
 
     controller.formatText(
       start,
@@ -208,12 +232,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     );
 
     controller.formatSelection(Attribute.clone(Attribute.bold, null));
-
-    _lastAddedText = addedText;
   }
 
   void onTextChanged(DocChange event) {
-    if (_isApplyingSearchHighlight) return;
     writeLine('Text changed: $event');
     setState(() => hasUnsavedChanges = true);
 
