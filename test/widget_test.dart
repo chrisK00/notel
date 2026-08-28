@@ -1,30 +1,25 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:notel/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const App());
+  test('Quill search highlighting formats text background', () {
+    final doc = Document()..insert(0, 'Hello world, this is a test note about zoloft and health.');
+    final controller = QuillController(
+      document: doc,
+      selection: const TextSelection(baseOffset: 0, extentOffset: 0),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final plainText = controller.document.toPlainText();
+    const term = 'zoloft';
+    final index = plainText.indexOf(term);
+    expect(index, greaterThanOrEqualTo(0));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    const highlightAttr = BackgroundAttribute('#FFE082');
+    controller.formatText(index, term.length, highlightAttr);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    final delta = controller.document.toDelta();
+    expect(delta.toString().contains('#FFE082'), isTrue);
   });
 }
+

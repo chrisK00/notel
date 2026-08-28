@@ -1,33 +1,49 @@
 import 'dart:math';
+import 'date_only.dart';
 
 class Note {
-  Note({required this.id, this.displayText = "", this.title, DateTime? date})
-      : date = date ?? DateTime.now();
+  Note(
+      {required this.id,
+      this.displayText = "",
+      this.title,
+      DateOnly? date,
+      this.lastModified,
+      this.categoryId})
+      : date = date ?? DateOnly.today();
   int id;
   String displayText;
-  DateTime date;
+  DateOnly date;
+  DateTime? lastModified;
   String? title;
+  int? categoryId;
 
   Map<String, Object?> toMap() {
-    return {
-      'id': id,
+    final map = <String, Object?>{
       'text': displayText,
-      'date': date.toString(),
-      'title': title?.toString()
+      'date': date.toString(), // stored as "yyyy-MM-dd"
+      'title': title?.toString(),
+      'lastModified': lastModified?.toString(),
+      'categoryId': categoryId,
     };
+    if (id != 0) {
+      map['id'] = id;
+    }
+    return map;
   }
 
   factory Note.fromMap(Map<String, dynamic> map) {
     return Note(
         id: map['id'],
         displayText: map['text'] ?? '',
-        date: DateTime.parse(map['date']),
-        title: map["title"]);
+        date: DateOnly.parse(map['date']),
+        lastModified: map['lastModified'] == null ? null : DateTime.parse(map['lastModified']),
+        title: map["title"],
+        categoryId: map['categoryId']);
   }
 
   @override
   String toString() {
-    return 'Note{title: $title, id: $id, date: $date, text length: ${displayText.length}}';
+    return 'Note{title: $title, id: $id, date: $date, categoryId: $categoryId, text length: ${displayText.length}}';
   }
 
   static String trimNoteDisplayText(String text) {

@@ -7,6 +7,7 @@ class BoolSettings {
   bool value;
 
   static const hideNoteTextKey = "hideNoteText";
+  static const autoBackupEnabledKey = "autoBackupEnabled";
 
   factory BoolSettings.fromMap(Map<String, dynamic> map) => BoolSettings(
         map['id'],
@@ -14,6 +15,22 @@ class BoolSettings {
       );
 
   Map<String, Object?> toMap() => {'id': id, 'value': value.toString()};
+}
+
+class StringSettings {
+  StringSettings(this.id, this.value);
+  String id;
+  String value;
+
+  static const lastExportReminderKey = "lastExportReminder";
+  static const autoBackupDirectoryKey = "autoBackupDirectory";
+  static const autoBackupPasswordKey = "autoBackupPassword";
+  static const autoBackupLastDateKey = "autoBackupLastDate";
+
+  factory StringSettings.fromMap(Map<String, dynamic> map) =>
+      StringSettings(map['id'], map['value'] as String);
+
+  Map<String, Object?> toMap() => {'id': id, 'value': value};
 }
 
 class SettingsRepository {
@@ -26,6 +43,15 @@ class SettingsRepository {
         where: "id= ?", whereArgs: [settingsId], limit: 1);
 
     return fromMap(getSettingsResult.first);
+  }
+
+  /// Returns null if the settings key doesn't exist yet.
+  Future<T?> getOrNull<T>(
+      String settingsId, T Function(Map<String, dynamic>) fromMap) async {
+    final result = await db.query(Db.settingsTable,
+        where: "id= ?", whereArgs: [settingsId], limit: 1);
+    if (result.isEmpty) return null;
+    return fromMap(result.first);
   }
 
   Future<void> insertOrUpdate(

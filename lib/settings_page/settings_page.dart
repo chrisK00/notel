@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:notel/infrastructure/auto_backup_service.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/utils/simple_encryptor.dart';
@@ -20,122 +21,326 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
-  var _message = "";
+  bool _autoBackupEnabled = false;
+  String _autoBackupDirectory = "";
+  String _autoBackupPassword = "";
+  String? _autoBackupLastDate;
+  String _message = "";
 
   final SettingsRepository _settingsRepository = SettingsRepository(Db.instance);
 
   @override
   void initState() {
-    _settingsRepository
-        .get(BoolSettings.hideNoteTextKey, BoolSettings.fromMap)
-        .then((settings) => {setState(() => _hideNoteSettings = settings)});
     super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final hideSettings = await _settingsRepository.getOrNull(
+      BoolSettings.hideNoteTextKey,
+      BoolSettings.fromMap,
+    );
+    final autoEnabled = await _settingsRepository.getOrNull(
+      BoolSettings.autoBackupEnabledKey,
+      BoolSettings.fromMap,
+    );
+    final autoDir = await _settingsRepository.getOrNull(
+      StringSettings.autoBackupDirectoryKey,
+      StringSettings.fromMap,
+    );
+    final autoPass = await _settingsRepository.getOrNull(
+      StringSettings.autoBackupPasswordKey,
+      StringSettings.fromMap,
+    );
+    final autoDate = await _settingsRepository.getOrNull(
+      StringSettings.autoBackupLastDateKey,
+      StringSettings.fromMap,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      if (hideSettings != null) _hideNoteSettings = hideSettings;
+      _autoBackupEnabled = autoEnabled?.value ?? false;
+      _autoBackupDirectory = autoDir?.value ?? "";
+      _autoBackupPassword = autoPass?.value ?? "";
+      _autoBackupLastDate = autoDate?.value;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 40),
-      alignment: Alignment.center,
-      child: Column(
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Settings'),
+        centerTitle: true,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
-          Text(_message),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              const Text('Export Notes'),
-              ElevatedButton(
-                  onPressed: exportNotes,
-                  child: const Icon(
-                    Icons.save_alt,
-                  ))
-            ],
+          if (_message.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    _message,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer),
+                  ),
+                ),
+              ),
+            ),
+
+          // --- Manual Backup / Restore Section ---
+          const Text('Manual Backup & Restore', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('Export Notes & Categories'),
+                  subtitle: const Text('Save an encrypted backup file (.bin) to share or keep'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: exportNotes,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.download),
+                  title: const Text('Import Backup'),
+                  subtitle: const Text('Restore notes and categories from an encrypted backup file'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: importNotes,
+                ),
+              ],
+            ),
           ),
-          const SizedBox(
-            height: 10,
+          const SizedBox(height: 20),
+
+          // --- Automated Weekly Backup Section ---
+          const Text('Automated Backup (Weekly)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.backup),
+                  title: const Text('Enable Weekly Auto-Backup'),
+                  subtitle: Text(_autoBackupEnabled
+                      ? (_autoBackupLastDate != null
+                          ? 'Last backup: ${_formatLastBackupDate(_autoBackupLastDate!)}'
+                          : 'Ready — backs up automatically every 7 days')
+                      : 'Disabled'),
+                  value: _autoBackupEnabled,
+                  onChanged: _toggleAutoBackup,
+                ),
+                if (_autoBackupEnabled) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.folder_open),
+                    title: const Text('Backup Folder'),
+                    subtitle: Text(
+                      _autoBackupDirectory.isEmpty ? 'No folder selected (required)' : _autoBackupDirectory,
+                      style: TextStyle(
+                        color: _autoBackupDirectory.isEmpty ? Colors.red : null,
+                      ),
+                    ),
+                    trailing: TextButton(
+                      onPressed: _pickAutoBackupFolder,
+                      child: Text(_autoBackupDirectory.isEmpty ? 'Select' : 'Change'),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.lock_outline),
+                    title: const Text('Encryption Password'),
+                    subtitle: Text(
+                      _autoBackupPassword.isEmpty
+                          ? 'No password set (required)'
+                          : '•••••••• (${_autoBackupPassword.length} chars)',
+                      style: TextStyle(
+                        color: _autoBackupPassword.isEmpty ? Colors.red : null,
+                      ),
+                    ),
+                    trailing: TextButton(
+                      onPressed: _changeAutoBackupPassword,
+                      child: Text(_autoBackupPassword.isEmpty ? 'Set' : 'Change'),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.play_arrow, size: 18),
+                          label: const Text('Backup Now'),
+                          onPressed: (_autoBackupDirectory.isEmpty || _autoBackupPassword.isEmpty)
+                              ? null
+                              : _runManualAutoBackupNow,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              const Text('Import Notes'),
-              ElevatedButton(
-                  onPressed: importNotes,
-                  child: const Icon(
-                    Icons.input,
-                  )),
-            ],
-          ),
-          const SizedBox(
-            height: 10,
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              const Text('Hide Note Text'),
-              Switch(
-                value: _hideNoteSettings.value,
-                onChanged: toggleHideNoteText,
-              )
-            ],
-          ),
-          const SizedBox(
-            height: 20,
-          ),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          const SizedBox(height: 12),
+
+          // --- Cloud Sync Guide ---
+          const ExpansionTile(
+            leading: Icon(Icons.cloud_sync, color: Colors.deepPurple),
+            title: Text('How to sync with Google Drive / Cloud'),
+            childrenPadding: EdgeInsets.all(16),
             children: [
               Text(
-                "Editor Shortcuts",
-                textScaler: TextScaler.linear(1.5),
+                '1. In Auto-Backup above, set your password and select a folder on your device (e.g. Documents/NotelBackups).\n\n'
+                '2. To sync with Google Drive / OneDrive / Nextcloud:\n'
+                '   • On PC: Choose a folder located inside your Google Drive or OneDrive sync directory.\n'
+                '   • On Android: Use the Google Drive app (or free sync apps like Autosync for Google Drive or Syncthing) to automatically sync your chosen folder.\n\n'
+                '3. Notel will silently create an encrypted backup (.enc) in that folder weekly. Your cloud service will upload it automatically in the background.',
+                style: TextStyle(fontSize: 13, height: 1.4),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text("Insert Time:  "),
-                  Text("..",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      )),
-                ],
-              )
             ],
-          )
+          ),
+          const SizedBox(height: 20),
+
+          // --- General App Settings ---
+          const Text('Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.visibility_off),
+                  title: const Text('Hide Note Text Preview'),
+                  subtitle: const Text('Only show note titles and dates on the home screen'),
+                  value: _hideNoteSettings.value,
+                  onChanged: toggleHideNoteText,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // --- Editor Shortcuts ---
+          const Text('Editor Shortcuts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          const Card(
+            child: ListTile(
+              leading: Icon(Icons.access_time),
+              title: Text('Insert Current Time'),
+              subtitle: Text('Type ".." in the note editor to insert timestamp'),
+              trailing: Text('..', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            ),
+          ),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  Future<String?> _promptForEncryptionKey() async {
-    String? value;
-    await showDialog(
+  String _formatLastBackupDate(String isoString) {
+    try {
+      final date = DateTime.parse(isoString);
+      return DateFormat('d MMM yyyy, HH:mm').format(date);
+    } catch (_) {
+      return isoString;
+    }
+  }
+
+  Future<void> _toggleAutoBackup(bool enabled) async {
+    setState(() => _autoBackupEnabled = enabled);
+    await _settingsRepository.insertOrUpdate(
+      BoolSettings.autoBackupEnabledKey,
+      BoolSettings(BoolSettings.autoBackupEnabledKey, enabled).toMap,
+    );
+
+    if (enabled) {
+      if (_autoBackupDirectory.isEmpty) {
+        await _pickAutoBackupFolder();
+      }
+      if (_autoBackupPassword.isEmpty && mounted) {
+        await _changeAutoBackupPassword();
+      }
+    }
+  }
+
+  Future<void> _pickAutoBackupFolder() async {
+    final selectedDir = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select Auto-Backup Folder',
+    );
+    if (selectedDir != null && selectedDir.trim().isNotEmpty) {
+      setState(() => _autoBackupDirectory = selectedDir.trim());
+      await _settingsRepository.insertOrUpdate(
+        StringSettings.autoBackupDirectoryKey,
+        StringSettings(StringSettings.autoBackupDirectoryKey, selectedDir.trim()).toMap,
+      );
+      setState(() => _message = 'Backup folder set');
+    }
+  }
+
+  Future<void> _changeAutoBackupPassword() async {
+    final newPass = await _promptForEncryptionKey(
+      title: 'Set Auto-Backup Password',
+      hint: 'Password for encrypted backups',
+    );
+    if (newPass != null && newPass.isNotEmpty) {
+      setState(() => _autoBackupPassword = newPass);
+      await _settingsRepository.insertOrUpdate(
+        StringSettings.autoBackupPasswordKey,
+        StringSettings(StringSettings.autoBackupPasswordKey, newPass).toMap,
+      );
+      setState(() => _message = 'Auto-backup password saved');
+    }
+  }
+
+  Future<void> _runManualAutoBackupNow() async {
+    setState(() => _message = 'Running backup...');
+    final file = await AutoBackupService.performAutoBackup(repo: _settingsRepository);
+    if (!mounted) return;
+    if (file != null) {
+      final now = DateTime.now().toIso8601String();
+      setState(() {
+        _autoBackupLastDate = now;
+        _message = 'Backup created: ${file.path.split(Platform.pathSeparator).last}';
+      });
+    } else {
+      setState(() => _message = 'Failed to create backup. Check folder and password.');
+    }
+  }
+
+  Future<String?> _promptForEncryptionKey({
+    String title = "Backup password",
+    String hint = "Enter password",
+  }) async {
+    final controller = TextEditingController();
+    return await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Backup password"),
+        title: Text(title),
         content: TextField(
+          controller: controller,
           obscureText: true,
-          decoration: const InputDecoration(hintText: "Enter password"),
-          onChanged: (v) => value = v,
+          autofocus: true,
+          decoration: InputDecoration(hintText: hint),
+          onSubmitted: (v) => Navigator.pop(context, v),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("OK")),
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text("Save"),
+          ),
         ],
       ),
     );
-    return value;
-  }
-
-  void showToast(BuildContext context, String message) {
-    final snackBar = SnackBar(
-      content: const Text("Changes saved. Restart to apply"),
-      duration: const Duration(seconds: 3),
-      action: SnackBarAction(
-        label: 'Dismiss',
-        onPressed: () {},
-      ),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
   Future<void> toggleHideNoteText(bool newSettings) async {
@@ -148,19 +353,15 @@ class _SettingsPageState extends State<SettingsPage> {
       final encryptionKey = await _promptForEncryptionKey();
       if (encryptionKey == null || encryptionKey.isEmpty) return;
 
-      final notes = await SettingsPageRepository.getNotes();
-      setState(() => _message = "fetched ${notes.length} notes");
-
-      final encrypted = SimpleEncryptor.encode(jsonEncode(notes), encryptionKey);
+      final backupPayload = await SettingsPageRepository.createBackupPayload();
+      final encrypted = SimpleEncryptor.encode(jsonEncode(backupPayload), encryptionKey);
 
       final targetDir = await getTemporaryDirectory();
-
-      final fileName = 'notel_notes_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
+      final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
       final filePath = '${targetDir.path}/$fileName';
 
       final file = File(filePath);
       await file.writeAsString(encrypted);
-      setState(() => _message = 'created file');
 
       final result = await Share.shareXFiles(
         [XFile(file.path)],
@@ -169,6 +370,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
       if (result.status == ShareResultStatus.success) {
         setState(() => _message = 'Export complete');
+        await _settingsRepository.insertOrUpdate(
+          StringSettings.lastExportReminderKey,
+          StringSettings(StringSettings.lastExportReminderKey, DateTime.now().toString()).toMap,
+        );
       } else {
         setState(() => _message = '${result.status}: ${result.raw}');
       }
@@ -184,10 +389,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> importNotes() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles();
-
-      if (result == null) {
-        return;
-      }
+      if (result == null || result.files.single.path == null) return;
 
       final encryptionKey = await _promptForEncryptionKey();
       if (encryptionKey == null || encryptionKey.isEmpty) return;
@@ -195,20 +397,10 @@ class _SettingsPageState extends State<SettingsPage> {
       final file = File(result.files.single.path!);
       final fileContent = await file.readAsString();
 
-      var decryptedJson = SimpleEncryptor.decrypt(fileContent, encryptionKey);
+      final decryptedJson = SimpleEncryptor.decrypt(fileContent, encryptionKey);
+      final dynamic decoded = jsonDecode(decryptedJson);
 
-      setState(() => _message = 'Decrypted notes');
-      final List<dynamic> notesDynamicJson = jsonDecode(decryptedJson);
-
-      final List<Map<String, Object?>> notesJson =
-          notesDynamicJson.map<Map<String, Object?>>((e) => Map<String, Object?>.from(e)).toList();
-
-      if (notesJson.isEmpty) {
-        setState(() => _message = 'Found 0 notes to import');
-        return;
-      }
-
-      await SettingsPageRepository.insertNotes(notesJson);
+      await SettingsPageRepository.restoreBackupPayload(decoded);
 
       setState(() => _message = 'Import complete');
     } catch (e) {

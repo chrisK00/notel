@@ -8,21 +8,30 @@ class NoteTextToolbar extends StatelessWidget {
   final QuillController _controller;
 
   @override
-  Widget build(BuildContext context) => QuillToolbar.simple(
-        configurations: QuillSimpleToolbarConfigurations(
-          showFontFamily: false,
-          showCodeBlock: false,
-          showUnderLineButton: false,
-          showSubscript: false,
-          showSuperscript: false,
-          showClearFormat: false,
-          showIndent: false,
-          showLink: false,
-          showClipboardCopy: false,
-          showClipboardCut: false,
-          showInlineCode: false,
-          multiRowsDisplay: false,
-          controller: _controller,
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: QuillToolbar.simple(
+          configurations: QuillSimpleToolbarConfigurations(
+            showFontFamily: false,
+            showCodeBlock: false,
+            showUnderLineButton: false,
+            showSubscript: false,
+            showSuperscript: false,
+            showClearFormat: false,
+            showIndent: false,
+            showLink: false,
+            showClipboardCopy: false,
+            showClipboardCut: false,
+            showInlineCode: false,
+            multiRowsDisplay: false,
+            controller: _controller,
+          ),
         ),
-      );
+      ),
+    );
+  }
 }

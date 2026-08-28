@@ -1,15 +1,17 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:notel/search/search_query.dart';
 import 'package:notel/utils/extensions.dart';
 import '../notes_provider.dart';
 import 'note_page_repository.dart';
 import 'note_base_page.dart';
 
 class EditPage extends StatefulWidget {
-  const EditPage({super.key, required this.noteId});
+  const EditPage({super.key, required this.noteId, this.highlightQuery});
 
   final int noteId;
+  final SearchQuery? highlightQuery;
 
   @override
   State<StatefulWidget> createState() => _EditPageState();
@@ -24,15 +26,25 @@ class _EditPageState extends NoteBasePage<EditPage> {
     }
 
     if (note.displayText.isEmpty) {
+      if (widget.highlightQuery != null) {
+        highlightSearchTerms(widget.highlightQuery);
+      }
       controller.document.changes.listen(onTextChanged);
+      if (mounted) setState(() => hasUnsavedChanges = false);
       return;
     }
 
     final json = jsonDecode(note.displayText);
     setState(() {
       controller.document = Document.fromJson(json);
-      controller.document.changes.listen(onTextChanged);
     });
+
+    if (widget.highlightQuery != null) {
+      highlightSearchTerms(widget.highlightQuery);
+    }
+
+    controller.document.changes.listen(onTextChanged);
+    if (mounted) setState(() => hasUnsavedChanges = false);
   }
 
   @override
