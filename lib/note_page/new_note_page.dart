@@ -5,7 +5,9 @@ import 'package:notel/notes_provider.dart';
 import 'package:notel/utils/extensions.dart';
 
 class NewNotePage extends StatefulWidget {
-  const NewNotePage({super.key});
+  const NewNotePage({super.key, this.categoryId});
+
+  final int? categoryId;
 
   @override
   State<StatefulWidget> createState() => _NewNotePageState();
@@ -14,8 +16,7 @@ class NewNotePage extends StatefulWidget {
 class _NewNotePageState extends NoteBasePage<NewNotePage> {
   @override
   Future initNote() async {
-    note = await NotePageRepository.createNote();
-    controller.document.changes.listen(onTextChanged);
+    note = await NotePageRepository.createNote(categoryId: widget.categoryId);
   }
 
   @override
@@ -25,7 +26,7 @@ class _NewNotePageState extends NoteBasePage<NewNotePage> {
         note.title.isNullOrWhitespace()) {
       await provider.remove(note.id);
     } else {
-      provider.add(note);
+      await provider.update(note.id);
     }
   }
 }
