@@ -83,8 +83,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    final reminder = await _settingsRepository.getOrNull(
-        StringSettings.lastExportReminderKey, StringSettings.fromMap);
+    final reminder = await _settingsRepository.getOrNull(StringSettings.lastExportReminderKey, StringSettings.fromMap);
     if (!mounted) return;
     final bool shouldShow;
     if (reminder == null) {
@@ -92,8 +91,7 @@ class _HomePageState extends State<HomePage> {
       shouldShow = true;
     } else {
       final lastDate = DateTime.tryParse(reminder.value);
-      shouldShow = lastDate == null ||
-          DateTime.now().difference(lastDate).inDays >= 30;
+      shouldShow = lastDate == null || DateTime.now().difference(lastDate).inDays >= 30;
     }
     if (shouldShow) setState(() => _showExportReminder = true);
   }
@@ -110,8 +108,7 @@ class _HomePageState extends State<HomePage> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    if (position.maxScrollExtent > 0 &&
-        position.pixels >= position.maxScrollExtent - 200) {
+    if (position.maxScrollExtent > 0 && position.pixels >= position.maxScrollExtent - 200) {
       final provider = Provider.of<NotesProvider>(context, listen: false);
       if (!provider.isLoadingMore && provider.hasMore) {
         provider.loadNextPage();
@@ -196,6 +193,7 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: searchBar(provider),
               ),
+              const SizedBox(height: 12),
               Expanded(
                 child: ListView.separated(
                     key: const PageStorageKey('notesListKey'),
@@ -567,24 +565,24 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.only(top: 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  n.date.isToday() ? 'today' : '',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  n.date.day.toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                ),
-                Text(
-                  DateFormat('MMMM').format(n.date.toDateTime()),
-                  style: const TextStyle(fontSize: 13),
-                ),
-                Text(
-                  DateFormat('yyyy').format(n.date.toDateTime()),
-                  style: const TextStyle(fontSize: 12),
-                )
-              ],
+                children: [
+                  Text(
+                    n.date.isToday() ? 'today' : '',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    n.date.day.toString(),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                  Text(
+                    DateFormat('MMMM').format(n.date.toDateTime()),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  Text(
+                    DateFormat('yyyy').format(n.date.toDateTime()),
+                    style: const TextStyle(fontSize: 12),
+                  )
+                ],
               ),
             ),
             SizedBox(
@@ -600,9 +598,7 @@ class _HomePageState extends State<HomePage> {
                           maxLines: 3,
                         )
                       : Text(n.title!,
-                          textScaler: const TextScaler.linear(1.2),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2),
+                          textScaler: const TextScaler.linear(1.2), overflow: TextOverflow.ellipsis, maxLines: 2),
                   if (n.lastModified != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -641,9 +637,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     // Build a combined regex that matches any of the terms (case-insensitive).
-    final pattern = terms
-        .map((t) => RegExp.escape(t))
-        .join('|');
+    final pattern = terms.map((t) => RegExp.escape(t)).join('|');
     final regex = RegExp(pattern, caseSensitive: false);
 
     final spans = <TextSpan>[];
