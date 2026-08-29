@@ -17,6 +17,8 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
       - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
       - run: flutter pub get
       - run: flutter build apk --split-per-abi
       - name: Release
