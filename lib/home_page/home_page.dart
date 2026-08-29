@@ -557,13 +557,13 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -584,33 +584,34 @@ class _HomePageState extends State<HomePage> {
                   )
                 ],
               ),
-            ),
-            SizedBox(
-              width: 250,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  n.title.isNullOrWhitespace()
-                      ? _highlightedText(
-                          _hideNoteTextSettings.value ? '' : n.displayText,
-                          _activeQuery,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 3,
-                        )
-                      : Text(n.title!,
-                          textScaler: const TextScaler.linear(1.2), overflow: TextOverflow.ellipsis, maxLines: 2),
-                  if (n.lastModified != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              SizedBox(
+                width: 250,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    n.title.isNullOrWhitespace()
+                        ? _highlightedText(
+                            _hideNoteTextSettings.value ? '' : n.displayText,
+                            _activeQuery,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
+                          )
+                        : Text(n.title!,
+                            textScaler: const TextScaler.linear(1.2), overflow: TextOverflow.ellipsis, maxLines: 2),
+                    if (n.lastModified != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ));
   }
 
@@ -660,13 +661,10 @@ class _HomePageState extends State<HomePage> {
       spans.add(TextSpan(text: text.substring(last)));
     }
 
-    return RichText(
+    return Text.rich(
+      TextSpan(children: spans),
       overflow: overflow,
       maxLines: maxLines,
-      text: TextSpan(
-        style: DefaultTextStyle.of(context).style,
-        children: spans,
-      ),
     );
   }
 
