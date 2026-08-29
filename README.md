@@ -55,28 +55,6 @@ Then restart the IDE.
 ## Icons
 - [Material Icons Reference](https://api.flutter.dev/flutter/material/Icons-class.html)
 
-## Completed Features
-- **Categories / Folders:** Organize notes into categories with dedicated drawer and headers.
-- **Rich Search Query Engine:** Supports title, starts with, date ranges, modified date, exclusion (`-term`), and `||` / `&&` logic.
-- **Search Highlight & Navigation:** Highlights matching search terms in editor with next/previous navigation controls.
-- **Automated / Scheduled Backups & Reminders:** Weekly automated encrypted backups with folder selection and monthly export reminders.
-- **DateOnly Domain Value:** Type-safe date representation for note dates without time-of-day discrepancies.
-- **Rich Clipboard Support:** Formatted text copy/cut/paste in Quill editor.
-
-## Deferred / Future Backlog
-
-### Note Templates
-A set of pre-filled Quill delta templates selectable when creating a new note (e.g. medication log, daily check-in). Could be a button in the toolbar or a template picker on the new-note entry point.
-
-### Stats & Insights Page
-Track word-occurrence frequency over time (e.g. "headache" count per week/month, deduped per day). Requires an aggregate query over all note text and a chart widget (`fl_chart` or similar).
-
-### Google Drive Direct Sync
-Store SQLite database directly in Google Drive `appdata` scope.
-
-### SQLite Direct Access on Android Emulator
-Use `adb shell` + `run-as com.example.notel` to pull the database file, then open it with DB Browser for SQLite.
-
 📌 Links & References
 * Scaler Flutter Pagination: https://www.scaler.com/topics/pagination-in-flutter/
 * Medium Package-less Pagination: https://medium.com/@m1nori/flutter-pagination-without-any-packages-8c24095555b3
