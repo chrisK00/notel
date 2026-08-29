@@ -89,8 +89,8 @@ class CategoryDrawer extends StatelessWidget {
                   title: const Text('All notes'),
                   selected: provider.selectedCategory == null,
                   onTap: () async {
-                    await provider.clearSelectedCategory();
                     if (context.mounted) Navigator.pop(context);
+                    await provider.clearSelectedCategory();
                   },
                 ),
                 Expanded(
@@ -111,8 +111,8 @@ class CategoryDrawer extends StatelessWidget {
                               title: Text(category.name),
                               selected: isSelected,
                               onTap: () async {
-                                await provider.setSelectedCategory(category);
                                 if (context.mounted) Navigator.pop(context);
+                                await provider.setSelectedCategory(category);
                               },
                             );
                           },

@@ -142,9 +142,15 @@ class _HomePageState extends State<HomePage> {
   void _syncCategoryTitle(NotesProvider provider) {
     final currentCat = provider.selectedCategory;
     if (currentCat == null) {
+      if (_editingCategoryId != null) {
+        _searchTextController.clear();
+        _activeQuery = null;
+      }
       _editingCategoryId = null;
       _categoryTitleController.text = '';
     } else if (_editingCategoryId != currentCat.id) {
+      _searchTextController.clear();
+      _activeQuery = null;
       _editingCategoryId = currentCat.id;
       _categoryTitleController.text = currentCat.name;
     }
@@ -363,32 +369,32 @@ class _HomePageState extends State<HomePage> {
                 const Divider(height: 16),
                 _filterAssistantItem(
                   icon: Icons.all_inclusive,
-                  template: 'contains:medA && contains:medB',
+                  template: 'contains:a && contains:b',
                   title: 'contains:x && contains:y',
                   description: 'Match notes containing all specified terms (AND)',
                   onTap: () {
                     Navigator.pop(ctx);
-                    _insertSearchTemplate('contains:medA && contains:medB', provider);
+                    _insertSearchTemplate('contains:a && contains:b', provider);
                   },
                 ),
                 _filterAssistantItem(
                   icon: Icons.data_array,
-                  template: 'contains(medA, medB)',
+                  template: 'contains(a, b)',
                   title: 'contains(a, b)',
                   description: 'Multi-term required matching (AND)',
                   onTap: () {
                     Navigator.pop(ctx);
-                    _insertSearchTemplate('contains(term1, term2)', provider);
+                    _insertSearchTemplate('contains(a, b)', provider);
                   },
                 ),
                 _filterAssistantItem(
                   icon: Icons.call_split,
-                  template: 'contains(medA | medB)',
+                  template: 'contains(a | b)',
                   title: 'contains(a | b)',
                   description: 'Match notes containing either term (OR)',
                   onTap: () {
                     Navigator.pop(ctx);
-                    _insertSearchTemplate('contains(term1 | term2)', provider);
+                    _insertSearchTemplate('contains(a | b)', provider);
                   },
                 ),
                 _filterAssistantItem(

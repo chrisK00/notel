@@ -437,7 +437,7 @@ class _SettingsPageState extends State<SettingsPage> {
       if (encryptionKey == null || encryptionKey.isEmpty) return;
 
       final backupPayload = await SettingsPageRepository.createBackupPayload();
-      final encrypted = SimpleEncryptor.encode(jsonEncode(backupPayload), encryptionKey);
+      final encrypted = await SimpleEncryptor.encodeAsync(jsonEncode(backupPayload), encryptionKey);
 
       final targetDir = await getTemporaryDirectory();
       final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
@@ -480,7 +480,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final file = File(result.files.single.path!);
       final fileContent = await file.readAsString();
 
-      final decryptedJson = SimpleEncryptor.decrypt(fileContent, encryptionKey);
+      final decryptedJson = await SimpleEncryptor.decryptAsync(fileContent, encryptionKey);
       final dynamic decoded = jsonDecode(decryptedJson);
 
       await SettingsPageRepository.restoreBackupPayload(decoded);

@@ -67,7 +67,7 @@ class AutoBackupService {
 
     final backupPayload = await SettingsPageRepository.createBackupPayload();
     final jsonString = jsonEncode(backupPayload);
-    final encrypted = SimpleEncryptor.encode(jsonString, passSetting.value);
+    final encrypted = await SimpleEncryptor.encodeAsync(jsonString, passSetting.value);
 
     final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.enc';
     final backupFile = File('${targetDir.path}${Platform.pathSeparator}$fileName');

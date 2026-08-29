@@ -108,9 +108,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
     final wasUnsaved = hasUnsavedChanges;
     detachDocListener();
-    const highlightAttr = BackgroundAttribute('#FFE082');
+    const bgAttr = BackgroundAttribute('#6750A4');
+    const colorAttr = ColorAttribute('#FFFFFF');
     for (final m in matches) {
-      controller.formatText(m.offset, m.length, highlightAttr);
+      controller.formatText(m.offset, m.length, bgAttr);
+      controller.formatText(m.offset, m.length, colorAttr);
     }
     attachDocListener();
 
@@ -154,9 +156,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     if (searchMatches.isNotEmpty) {
       final wasUnsaved = hasUnsavedChanges;
       detachDocListener();
-      final clearAttr = Attribute.clone(Attribute.background, null);
+      final clearBg = Attribute.clone(Attribute.background, null);
+      final clearColor = Attribute.clone(Attribute.color, null);
       for (final m in searchMatches) {
-        controller.formatText(m.offset, m.length, clearAttr);
+        controller.formatText(m.offset, m.length, clearBg);
+        controller.formatText(m.offset, m.length, clearColor);
       }
       attachDocListener();
       setState(() {
