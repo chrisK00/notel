@@ -359,7 +359,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       default:
                     }
                   },
-                  iconColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.7),
+                  iconColor: Theme.of(context).colorScheme.secondary.withOpacity(0.7),
                   itemBuilder: (context) => [
                         const PopupMenuItem<int>(
                           value: 1,
