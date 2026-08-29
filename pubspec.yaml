@@ -32,6 +32,8 @@ dependencies:
     sdk: flutter
   flutter_quill: ^9.5.15
   path_provider:
+  encrypt:
+  pointycastle:
   sqflite_common_ffi:
   sqlite3_flutter_libs:
   sqflite: ^2.3.3+1
