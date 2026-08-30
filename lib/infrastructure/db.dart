@@ -29,6 +29,9 @@ class Db {
     if (oldVersion < 5) {
       await _version5(db);
     }
+    if (oldVersion < 6) {
+      await _version6(db);
+    }
   }
 
   static Future<void> _setupDatabase(Database db, int version) async {
@@ -73,6 +76,13 @@ class Db {
     }
   }
 
+  static Future<void> _version6(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info(Note)");
+    if (!columns.any((c) => c['name'] == 'hidden')) {
+      await db.execute("ALTER TABLE Note ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0");
+    }
+  }
+
   static Future initialize({bool useDebugDatabase = false}) async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbName = useDebugDatabase ? debugDatabaseName : databaseName;
@@ -94,7 +104,9 @@ class Db {
           if (!hasLastModified) {
             await db.execute("ALTER TABLE Note ADD COLUMN lastModified TEXT");
           }
+          final hasHidden = columns.any((c) => c['name'] == 'hidden');
+          if (!hasHidden) await db.execute("ALTER TABLE Note ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0");
         },
-        version: 5);
+        version: 6);
   }
 }

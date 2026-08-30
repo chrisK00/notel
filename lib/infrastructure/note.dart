@@ -8,7 +8,8 @@ class Note {
       this.title,
       DateOnly? date,
       this.lastModified,
-      this.categoryId})
+      this.categoryId,
+      this.hidden = false})
       : date = date ?? DateOnly.today();
   int id;
   String displayText;
@@ -16,6 +17,7 @@ class Note {
   DateTime? lastModified;
   String? title;
   int? categoryId;
+  bool hidden;
 
   Map<String, Object?> toMap() {
     final map = <String, Object?>{
@@ -24,6 +26,7 @@ class Note {
       'title': title?.toString(),
       'lastModified': lastModified?.toString(),
       'categoryId': categoryId,
+      'hidden': hidden ? 1 : 0,
     };
     if (id != 0) {
       map['id'] = id;
@@ -38,7 +41,7 @@ class Note {
         date: DateOnly.parse(map['date']),
         lastModified: map['lastModified'] == null ? null : DateTime.parse(map['lastModified']),
         title: map["title"],
-        categoryId: map['categoryId']);
+        categoryId: map['categoryId'], hidden: map['hidden'] == 1 || map['hidden'] == true);
   }
 
   @override

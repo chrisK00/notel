@@ -3,6 +3,8 @@ import 'package:notel/search/search_query.dart';
 
 import '../infrastructure/note.dart';
 
+enum NoteSort { created, name, modified }
+
 // TODO repo names are a bit weird rn. should be one repo tbh. same with the <Note> data type better to have VM?
 class HomePageRepository {
   static const _previewSql = r'''
@@ -15,7 +17,7 @@ class HomePageRepository {
                   FROM (
                     SELECT value
                     FROM json_each(CASE WHEN json_valid(Note.text) = 1 THEN Note.text ELSE '[]' END)
-                    LIMIT 3
+                    LIMIT 4
                   ) AS json_data
                 ),
                 ''
@@ -29,9 +31,10 @@ class HomePageRepository {
 
   static const int pageSize = 30;
 
-  static Future<Iterable<Note>> loadNotes({int offset = 0, int? categoryId}) async {
-    final where = categoryId != null ? 'WHERE categoryId = ?' : '';
+  static Future<Iterable<Note>> loadNotes({int offset = 0, int? categoryId, NoteSort sort = NoteSort.created}) async {
+    final where = categoryId != null ? 'WHERE categoryId = ?' : 'WHERE hidden = 0';
     final args = categoryId != null ? [categoryId, pageSize, offset] : [pageSize, offset];
+    final order = switch (sort) { NoteSort.name => 'title COLLATE NOCASE ASC, id DESC', NoteSort.modified => 'lastModified DESC, id DESC', NoteSort.created => 'date DESC, id DESC' };
     final rows = await Db.instance.rawQuery('''
         SELECT
           id,
@@ -42,7 +45,7 @@ class HomePageRepository {
           categoryId
         FROM NOTE
         $where
-        ORDER BY date DESC, lastModified DESC, id DESC
+        ORDER BY $order
         LIMIT ? OFFSET ?
         ''', args);
 
@@ -72,11 +75,13 @@ class HomePageRepository {
   ///   - startsWithTerm → first delta insert starts with term
   ///   - dateFrom/To   → date column range
   ///   - textOrGroups  → each group is an OR of LIKE checks on title + body deltas
-  static Future<Iterable<Note>> findNotes(SearchQuery query, {int? categoryId}) async {
-    if (query.isEmpty) return loadNotes(categoryId: categoryId);
+  static Future<Iterable<Note>> findNotes(SearchQuery query, {int? categoryId, NoteSort sort = NoteSort.created}) async {
+    if (query.isEmpty) return loadNotes(categoryId: categoryId, sort: sort);
 
     final conditions = <String>[];
     final args = <Object>[];
+
+    if (categoryId == null) conditions.add('hidden = 0');
 
     if (categoryId != null) {
       conditions.add('categoryId = ?');
@@ -162,6 +167,7 @@ class HomePageRepository {
 
     final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
+    final order = switch (sort) { NoteSort.name => 'title COLLATE NOCASE ASC, Note.id DESC', NoteSort.modified => 'Note.lastModified DESC, Note.id DESC', NoteSort.created => 'Note.date DESC, Note.id DESC' };
     final sql = '''
       SELECT
         NOTE.id,
@@ -172,7 +178,7 @@ class HomePageRepository {
         categoryId
       FROM Note
       $where
-      ORDER BY Note.date DESC, Note.lastModified DESC, Note.id DESC
+      ORDER BY $order
     ''';
 
     final rows = await Db.instance.rawQuery(sql, args);

@@ -31,7 +31,11 @@ class _HomePageState extends State<HomePage> {
   final _settingsRepository = SettingsRepository(Db.instance);
   final _scrollController = ScrollController();
   var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
+  var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  double _previewFontSize = 14;
+  double _previewTitleFontSize = 17;
   Timer? _searchDebounce;
+  int _searchRequestId = 0;
   bool _showExportReminder = false;
   SearchQuery? _activeQuery;
   int? _editingCategoryId;
@@ -39,16 +43,22 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadNotes() async {
     final provider = Provider.of<NotesProvider>(context, listen: false);
     await provider.loadCategories();
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
     if (!mounted) return;
     provider.init(loadedNotes);
   }
 
   Future<void> loadSettings() async {
     final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
-    if (!mounted || settings == null) return;
+    final showModified = await _settingsRepository.getOrNull(BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
+    final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
+    final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    if (!mounted) return;
     setState(() {
-      _hideNoteTextSettings = settings;
+      if (settings != null) _hideNoteTextSettings = settings;
+      if (showModified != null) _showLastModifiedSettings = showModified;
+      _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
+      _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
     });
   }
 
@@ -83,8 +93,7 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    final reminder = await _settingsRepository.getOrNull(
-        StringSettings.lastExportReminderKey, StringSettings.fromMap);
+    final reminder = await _settingsRepository.getOrNull(StringSettings.lastExportReminderKey, StringSettings.fromMap);
     if (!mounted) return;
     final bool shouldShow;
     if (reminder == null) {
@@ -92,8 +101,7 @@ class _HomePageState extends State<HomePage> {
       shouldShow = true;
     } else {
       final lastDate = DateTime.tryParse(reminder.value);
-      shouldShow = lastDate == null ||
-          DateTime.now().difference(lastDate).inDays >= 30;
+      shouldShow = lastDate == null || DateTime.now().difference(lastDate).inDays >= 30;
     }
     if (shouldShow) setState(() => _showExportReminder = true);
   }
@@ -110,8 +118,7 @@ class _HomePageState extends State<HomePage> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    if (position.maxScrollExtent > 0 &&
-        position.pixels >= position.maxScrollExtent - 200) {
+    if (position.maxScrollExtent > 0 && position.pixels >= position.maxScrollExtent - 200) {
       final provider = Provider.of<NotesProvider>(context, listen: false);
       if (!provider.isLoadingMore && provider.hasMore) {
         provider.loadNextPage();
@@ -196,6 +203,7 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: searchBar(provider),
               ),
+              const SizedBox(height: 12),
               Expanded(
                 child: ListView.separated(
                     key: const PageStorageKey('notesListKey'),
@@ -255,6 +263,14 @@ class _HomePageState extends State<HomePage> {
           PopupMenuButton<int>(
             icon: const Icon(Icons.more_horiz),
             onSelected: (item) async {
+              if (item == 5 || item == 6) {
+                await provider.setCategoryHomeVisibility(item == 6);
+                return;
+              }
+              if (item >= 2) {
+                await provider.setSort(NoteSort.values[item - 2]);
+                return;
+              }
               if (item == 1) {
                 final categoryToDelete = provider.selectedCategory;
                 if (categoryToDelete == null) return;
@@ -266,7 +282,19 @@ class _HomePageState extends State<HomePage> {
                     successBtnText: "Cancel",
                   ),
                 );
-                if (shouldCancel == false && mounted) {
+                var confirmed = shouldCancel == false;
+                if (confirmed && provider.notes.isNotEmpty) {
+                  final secondConfirmation = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => YesOrNoDialog(
+                      title: "This will permanently delete ${provider.notes.length} note${provider.notes.length == 1 ? '' : 's'}. Continue?",
+                      dangerBtnText: "Delete all",
+                      successBtnText: "Cancel",
+                    ),
+                  );
+                  confirmed = secondConfirmation == false;
+                }
+                if (confirmed && mounted) {
                   _searchTextController.clear();
                   _activeQuery = null;
                   await provider.deleteCategory(categoryToDelete.id);
@@ -274,6 +302,13 @@ class _HomePageState extends State<HomePage> {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem<int>(value: 5, child: Text('Hide all notes from home')),
+              const PopupMenuItem<int>(value: 6, child: Text('Show all notes on home')),
+              const PopupMenuDivider(),
+              PopupMenuItem<int>(value: 2, child: Text('Sort: Created${provider.sort == NoteSort.created ? ' ✓' : ''}')),
+              PopupMenuItem<int>(value: 3, child: Text('Sort: Name${provider.sort == NoteSort.name ? ' ✓' : ''}')),
+              PopupMenuItem<int>(value: 4, child: Text('Sort: Last modified${provider.sort == NoteSort.modified ? ' ✓' : ''}')),
+              const PopupMenuDivider(),
               const PopupMenuItem<int>(
                 value: 1,
                 child: Row(
@@ -511,7 +546,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future clearSearch(NotesProvider provider) async {
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+    _searchDebounce?.cancel();
+    final requestId = ++_searchRequestId;
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+    if (requestId != _searchRequestId) return;
     provider.init(loadedNotes);
     setState(() {
       _searchTextController.text = '';
@@ -520,15 +558,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future onSearch(String value, NotesProvider provider) async {
-    if (value.isEmpty) {
+    final trimmedValue = value.trim();
+    if (trimmedValue.isEmpty) {
       await clearSearch(provider);
       return;
     }
 
     _searchDebounce?.cancel();
+    final requestId = ++_searchRequestId;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final query = SearchQueryParser.parse(value);
-      final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id);
+      final query = SearchQueryParser.parse(trimmedValue);
+      final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+      if (requestId != _searchRequestId || _searchTextController.text.trim() != trimmedValue) return;
       if (mounted) setState(() => _activeQuery = query);
       provider.init(foundNotes);
     });
@@ -559,62 +600,63 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Column(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
                 mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  n.date.isToday() ? 'today' : '',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  n.date.day.toString(),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                ),
-                Text(
-                  DateFormat('MMMM').format(n.date.toDateTime()),
-                  style: const TextStyle(fontSize: 13),
-                ),
-                Text(
-                  DateFormat('yyyy').format(n.date.toDateTime()),
-                  style: const TextStyle(fontSize: 12),
-                )
-              ],
-              ),
-            ),
-            SizedBox(
-              width: 250,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  n.title.isNullOrWhitespace()
-                      ? _highlightedText(
-                          _hideNoteTextSettings.value ? '' : n.displayText,
-                          _activeQuery,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 3,
-                        )
-                      : Text(n.title!,
-                          textScaler: const TextScaler.linear(1.2),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2),
-                  if (n.lastModified != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  Text(
+                    n.date.isToday() ? 'today' : '',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    n.date.day.toString(),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                  ),
+                  Text(
+                    DateFormat('MMMM').format(n.date.toDateTime()),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  Text(
+                    DateFormat('yyyy').format(n.date.toDateTime()),
+                    style: const TextStyle(fontSize: 12),
+                  )
                 ],
               ),
-            ),
-          ],
+              SizedBox(
+                width: 270,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    n.title.isNullOrWhitespace()
+                        ? _highlightedText(
+                            _hideNoteTextSettings.value ? '' : n.displayText,
+                            _activeQuery,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 3,
+                            fontSize: _previewFontSize,
+                          )
+                        : Text(n.title!,
+                            style: TextStyle(fontSize: _previewTitleFontSize),
+                            overflow: TextOverflow.ellipsis, maxLines: 1),
+                    if (_showLastModifiedSettings.value && n.lastModified != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.70)),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ));
   }
 
@@ -625,6 +667,7 @@ class _HomePageState extends State<HomePage> {
     SearchQuery? query, {
     TextOverflow overflow = TextOverflow.clip,
     int? maxLines,
+    double? fontSize,
   }) {
     // Collect all terms to highlight: bare text terms + titleTerms + startsWithTerms.
     final terms = <String>[];
@@ -637,13 +680,11 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (terms.isEmpty || text.isEmpty) {
-      return Text(text, overflow: overflow, maxLines: maxLines);
+      return Text(text, overflow: overflow, maxLines: maxLines, style: TextStyle(fontSize: fontSize));
     }
 
     // Build a combined regex that matches any of the terms (case-insensitive).
-    final pattern = terms
-        .map((t) => RegExp.escape(t))
-        .join('|');
+    final pattern = terms.map((t) => RegExp.escape(t)).join('|');
     final regex = RegExp(pattern, caseSensitive: false);
 
     final spans = <TextSpan>[];
@@ -666,13 +707,13 @@ class _HomePageState extends State<HomePage> {
       spans.add(TextSpan(text: text.substring(last)));
     }
 
-    return RichText(
-      overflow: overflow,
-      maxLines: maxLines,
-      text: TextSpan(
-        style: DefaultTextStyle.of(context).style,
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(fontSize: _previewFontSize, color: Theme.of(context).textTheme.bodyMedium?.color),
         children: spans,
       ),
+      overflow: overflow,
+      maxLines: maxLines,
     );
   }
 

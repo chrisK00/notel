@@ -17,7 +17,7 @@ void main() {
       version: 5,
       onCreate: (db, version) async {
         await db.execute("""CREATE TABLE Note(
-  id INTEGER PRIMARY KEY, text TEXT, date TEXT
+  id INTEGER PRIMARY KEY, text TEXT, date TEXT, hidden INTEGER NOT NULL DEFAULT 0
   )""");
         await db.execute("""CREATE TABLE Settings(
   id TEXT PRIMARY KEY, value TEXT
@@ -73,7 +73,7 @@ void main() {
       version: 5,
       onCreate: (db, version) async {
         await db.execute("""CREATE TABLE Note(
-  id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER
+  id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER, hidden INTEGER NOT NULL DEFAULT 0
   )""");
         await db.execute("""CREATE TABLE IF NOT EXISTS Category(
   id INTEGER PRIMARY KEY AUTOINCREMENT,

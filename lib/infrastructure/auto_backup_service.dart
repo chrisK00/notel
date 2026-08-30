@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import 'package:notel/console.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/settings_page/settings_page_repository.dart';
@@ -42,50 +43,58 @@ class AutoBackupService {
   }
 
   static Future<File?> performAutoBackup({SettingsRepository? repo}) async {
-    final settingsRepo = repo ?? SettingsRepository(Db.instance);
+    try {
+      final settingsRepo = repo ?? SettingsRepository(Db.instance);
 
-    final dirSetting = await settingsRepo.getOrNull(
-      StringSettings.autoBackupDirectoryKey,
-      StringSettings.fromMap,
-    );
-    final passSetting = await settingsRepo.getOrNull(
-      StringSettings.autoBackupPasswordKey,
-      StringSettings.fromMap,
-    );
+      final dirSetting = await settingsRepo.getOrNull(
+        StringSettings.autoBackupDirectoryKey,
+        StringSettings.fromMap,
+      );
+      final passSetting = await settingsRepo.getOrNull(
+        StringSettings.autoBackupPasswordKey,
+        StringSettings.fromMap,
+      );
 
-    if (dirSetting == null ||
-        dirSetting.value.trim().isEmpty ||
-        passSetting == null ||
-        passSetting.value.isEmpty) {
-      return null;
+      if (dirSetting == null ||
+          dirSetting.value.trim().isEmpty ||
+          passSetting == null ||
+          passSetting.value.isEmpty) {
+        writeLine('AutoBackup skipped: Missing directory or password.');
+        return null;
+      }
+
+      writeLine('AutoBackup: Target folder: ${dirSetting.value}');
+      final targetDir = Directory(dirSetting.value);
+      if (!await targetDir.exists()) {
+        await targetDir.create(recursive: true);
+      }
+
+      final backupPayload = await SettingsPageRepository.createBackupPayload();
+      final jsonString = jsonEncode(backupPayload);
+      final encrypted = await SimpleEncryptor.encodeAsync(jsonString, passSetting.value);
+
+      final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.enc';
+      final backupFile = File('${targetDir.path}${Platform.pathSeparator}$fileName');
+      await backupFile.writeAsString(encrypted);
+
+      // Also write a latest snapshot for quick access
+      final latestFile = File('${targetDir.path}${Platform.pathSeparator}notel_backup_latest.enc');
+      await latestFile.writeAsString(encrypted);
+
+      // Cleanup older dated backup files, keeping the 2 most recent
+      await _rotateOldBackups(targetDir);
+
+      await settingsRepo.insertOrUpdate(
+        StringSettings.autoBackupLastDateKey,
+        StringSettings(StringSettings.autoBackupLastDateKey, DateTime.now().toIso8601String()).toMap,
+      );
+
+      writeLine('AutoBackup success: ${backupFile.path}');
+      return backupFile;
+    } catch (e, st) {
+      writeLine('AutoBackup performAutoBackup failed: $e\n$st');
+      rethrow;
     }
-
-    final targetDir = Directory(dirSetting.value);
-    if (!await targetDir.exists()) {
-      await targetDir.create(recursive: true);
-    }
-
-    final backupPayload = await SettingsPageRepository.createBackupPayload();
-    final jsonString = jsonEncode(backupPayload);
-    final encrypted = await SimpleEncryptor.encodeAsync(jsonString, passSetting.value);
-
-    final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.enc';
-    final backupFile = File('${targetDir.path}${Platform.pathSeparator}$fileName');
-    await backupFile.writeAsString(encrypted);
-
-    // Also write a latest snapshot for quick access
-    final latestFile = File('${targetDir.path}${Platform.pathSeparator}notel_backup_latest.enc');
-    await latestFile.writeAsString(encrypted);
-
-    // Cleanup older dated backup files, keeping the 2 most recent
-    await _rotateOldBackups(targetDir);
-
-    await settingsRepo.insertOrUpdate(
-      StringSettings.autoBackupLastDateKey,
-      StringSettings(StringSettings.autoBackupLastDateKey, DateTime.now().toIso8601String()).toMap,
-    );
-
-    return backupFile;
   }
 
   static Future<void> _rotateOldBackups(Directory targetDir) async {
@@ -114,10 +123,11 @@ class AutoBackupService {
     try {
       final settingsRepo = repo ?? SettingsRepository(Db.instance);
       if (await shouldPerformAutoBackup(settingsRepo)) {
+        writeLine('AutoBackup: Starting scheduled backup...');
         await performAutoBackup(repo: settingsRepo);
       }
-    } catch (_) {
-      // Auto-backup is non-blocking and silent
+    } catch (e, st) {
+      writeLine('AutoBackup error: $e\n$st');
     }
   }
 }

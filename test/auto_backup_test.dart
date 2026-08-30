@@ -25,7 +25,7 @@ void main() {
       inMemoryDatabasePath,
       version: 5,
       onCreate: (db, version) async {
-        await db.execute("CREATE TABLE Note(id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER)");
+        await db.execute("CREATE TABLE Note(id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER, hidden INTEGER NOT NULL DEFAULT 0)");
         await db.execute("CREATE TABLE Settings(id TEXT PRIMARY KEY, value TEXT)");
         await db.execute("CREATE TABLE Category(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)");
       },

@@ -6,6 +6,8 @@ import 'package:notel/main.dart';
 import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/home_page/home_page_repository.dart';
 import 'package:notel/infrastructure/note.dart';
+import 'package:notel/infrastructure/db.dart';
+import 'package:notel/infrastructure/settings_repository.dart';
 
 class NotesProvider extends ChangeNotifier {
   final List<Note> _notes = [];
@@ -13,12 +15,14 @@ class NotesProvider extends ChangeNotifier {
   Category? _selectedCategory;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+  NoteSort _sort = NoteSort.created;
 
   UnmodifiableListView<Note> get notes => UnmodifiableListView(_notes);
   UnmodifiableListView<Category> get categories => UnmodifiableListView(_categories);
   Category? get selectedCategory => _selectedCategory;
   bool get hasMore => _hasMore;
   bool get isLoadingMore => _isLoadingMore;
+  NoteSort get sort => _sort;
 
   void init(Iterable<Note> notes) {
     final noteList = notes.toList();
@@ -46,15 +50,39 @@ class NotesProvider extends ChangeNotifier {
 
   Future<void> setSelectedCategory(Category? category) async {
     _selectedCategory = category;
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: category?.id);
+    final key = 'noteSort:${category?.id ?? 'all'}';
+    final saved = await SettingsRepository(Db.instance).getOrNull(key, StringSettings.fromMap);
+    _sort = NoteSort.values.firstWhere((s) => s.name == saved?.value, orElse: () => NoteSort.created);
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: category?.id, sort: _sort);
     init(loadedNotes);
   }
 
   Future<void> clearSelectedCategory() async {
     if (_selectedCategory == null) return;
     _selectedCategory = null;
-    final loadedNotes = await HomePageRepository.loadNotes();
+    _sort = NoteSort.created;
+    final loadedNotes = await HomePageRepository.loadNotes(sort: NoteSort.created);
     init(loadedNotes);
+  }
+
+  Future<void> setSort(NoteSort sort) async {
+    _sort = sort;
+    await SettingsRepository(Db.instance).insertOrUpdate(
+      'noteSort:${_selectedCategory?.id ?? 'all'}',
+      () => StringSettings('noteSort:${_selectedCategory?.id ?? 'all'}', sort.name).toMap(),
+    );
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: _selectedCategory?.id, sort: sort);
+    init(loadedNotes);
+  }
+
+  Future<void> setCategoryHomeVisibility(bool shown) async {
+    final category = _selectedCategory;
+    if (category == null) return;
+    await NotePageRepository.setCategoryNotesHidden(category.id, !shown);
+    final key = StringSettings.categoryHiddenDefaultKey(category.id);
+    await SettingsRepository(Db.instance).insertOrUpdate(
+      key, () => StringSettings(key, (!shown).toString()).toMap());
+    init(await HomePageRepository.loadNotes(categoryId: category.id, sort: _sort));
   }
 
   Future<Category?> createCategory(String name) async {
@@ -85,9 +113,10 @@ class NotesProvider extends ChangeNotifier {
       await CategoryRepository.delete(id);
       if (_selectedCategory != null && _selectedCategory!.id == id) {
         _selectedCategory = null;
+        _sort = NoteSort.created;
       }
       await loadCategories();
-      final loadedNotes = await HomePageRepository.loadNotes(categoryId: _selectedCategory?.id);
+      final loadedNotes = await HomePageRepository.loadNotes(categoryId: _selectedCategory?.id, sort: _selectedCategory == null ? NoteSort.created : _sort);
       init(loadedNotes);
     } catch (e) {
       AppErrors.showError('Failed to delete category.');
@@ -103,6 +132,7 @@ class NotesProvider extends ChangeNotifier {
       final nextPage = (await HomePageRepository.loadNotes(
         offset: _notes.length,
         categoryId: _selectedCategory?.id,
+        sort: _sort,
       )).toList();
       _notes.addAll(nextPage);
       _hasMore = nextPage.length >= HomePageRepository.pageSize;
@@ -170,16 +200,24 @@ class NotesProvider extends ChangeNotifier {
 
   void _sortNotes() {
     _notes.sort((a, b) {
+      if (_sort == NoteSort.name) {
+        final nameComp = (a.title ?? '').toLowerCase().compareTo((b.title ?? '').toLowerCase());
+        if (nameComp != 0) return nameComp;
+        return b.id.compareTo(a.id);
+      } else if (_sort == NoteSort.modified) {
+        final aModified = a.lastModified;
+        final bModified = b.lastModified;
+        if (aModified != null || bModified != null) {
+          if (aModified == null) return 1;
+          if (bModified == null) return -1;
+          final modifiedComp = bModified.compareTo(aModified);
+          if (modifiedComp != 0) return modifiedComp;
+          return b.id.compareTo(a.id);
+        }
+        return b.id.compareTo(a.id);
+      }
       final dateComp = b.date.compareTo(a.date);
       if (dateComp != 0) return dateComp;
-      if (a.lastModified != null && b.lastModified != null) {
-        final modComp = b.lastModified!.compareTo(a.lastModified!);
-        if (modComp != 0) return modComp;
-      } else if (a.lastModified != null) {
-        return -1;
-      } else if (b.lastModified != null) {
-        return 1;
-      }
       return b.id.compareTo(a.id);
     });
   }

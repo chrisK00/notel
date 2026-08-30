@@ -8,6 +8,7 @@ class BoolSettings {
 
   static const hideNoteTextKey = "hideNoteText";
   static const autoBackupEnabledKey = "autoBackupEnabled";
+  static const showLastModifiedKey = "showLastModified";
 
   factory BoolSettings.fromMap(Map<String, dynamic> map) => BoolSettings(
         map['id'],
@@ -27,6 +28,9 @@ class StringSettings {
   static const autoBackupPasswordKey = "autoBackupPassword";
   static const autoBackupLastDateKey = "autoBackupLastDate";
   static const timeShortcutKey = "timeShortcutKey";
+  static const previewFontSizeKey = "previewFontSize";
+  static const previewTitleFontSizeKey = "previewTitleFontSize";
+  static String categoryHiddenDefaultKey(int categoryId) => 'categoryHiddenDefault:$categoryId';
 
   factory StringSettings.fromMap(Map<String, dynamic> map) =>
       StringSettings(map['id'], map['value'] as String);

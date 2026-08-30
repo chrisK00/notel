@@ -24,6 +24,9 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
+  var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  double _previewFontSize = 14;
+  double _previewTitleFontSize = 17;
   bool _autoBackupEnabled = false;
   String _autoBackupDirectory = "";
   String _autoBackupPassword = "";
@@ -48,6 +51,11 @@ class _SettingsPageState extends State<SettingsPage> {
       BoolSettings.autoBackupEnabledKey,
       BoolSettings.fromMap,
     );
+    final showModified = await _settingsRepository.getOrNull(
+      BoolSettings.showLastModifiedKey, BoolSettings.fromMap,
+    );
+    final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
+    final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
     final autoDir = await _settingsRepository.getOrNull(
       StringSettings.autoBackupDirectoryKey,
       StringSettings.fromMap,
@@ -68,6 +76,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     setState(() {
       if (hideSettings != null) _hideNoteSettings = hideSettings;
+      if (showModified != null) _showLastModifiedSettings = showModified;
+      _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
+      _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
       _autoBackupEnabled = autoEnabled?.value ?? false;
       _autoBackupDirectory = autoDir?.value ?? "";
       _autoBackupPassword = autoPass?.value ?? "";
@@ -230,6 +241,16 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: _hideNoteSettings.value,
                   onChanged: toggleHideNoteText,
                 ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.update),
+                  title: const Text('Show Last Edited Date'),
+                  subtitle: const Text('Display when each note was last changed'),
+                  value: _showLastModifiedSettings.value,
+                  onChanged: toggleShowLastModified,
+                ),
+                ListTile(title: Text('Preview text size (${_previewFontSize.round()}px)'), subtitle: Slider(value: _previewFontSize, min: 12, max: 22, divisions: 10, onChanged: _setPreviewFontSize)),
+                ListTile(title: Text('Preview title size (${_previewTitleFontSize.round()}px)'), subtitle: Slider(value: _previewTitleFontSize, min: 14, max: 28, divisions: 14, onChanged: _setPreviewTitleFontSize)),
               ],
             ),
           ),
@@ -430,6 +451,25 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _hideNoteSettings.value = newSettings);
     await _settingsRepository.insertOrUpdate(_hideNoteSettings.id, _hideNoteSettings.toMap);
   }
+
+  Future<void> toggleShowLastModified(bool value) async {
+    setState(() => _showLastModifiedSettings.value = value);
+    await _settingsRepository.insertOrUpdate(
+      _showLastModifiedSettings.id, _showLastModifiedSettings.toMap,
+    );
+  }
+
+  Future<void> _setPreviewFontSize(double value) async {
+    setState(() => _previewFontSize = value);
+    await _settingsRepository.insertOrUpdate(StringSettings.previewFontSizeKey, () => StringSettings(StringSettings.previewFontSizeKey, value.toString()).toMap());
+  }
+
+  Future<void> _setPreviewTitleFontSize(double value) async {
+    setState(() => _previewTitleFontSize = value);
+    await _settingsRepository.insertOrUpdate(StringSettings.previewTitleFontSizeKey,
+        () => StringSettings(StringSettings.previewTitleFontSizeKey, value.toString()).toMap());
+  }
+
 
   Future<void> exportNotes() async {
     try {
