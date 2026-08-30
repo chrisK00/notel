@@ -32,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   final _scrollController = ScrollController();
   var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
   Timer? _searchDebounce;
+  int _searchRequestId = 0;
   bool _showExportReminder = false;
   SearchQuery? _activeQuery;
   int? _editingCategoryId;
@@ -509,7 +510,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future clearSearch(NotesProvider provider) async {
+    _searchDebounce?.cancel();
+    final requestId = ++_searchRequestId;
     final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+    if (requestId != _searchRequestId) return;
     provider.init(loadedNotes);
     setState(() {
       _searchTextController.text = '';
@@ -518,15 +522,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future onSearch(String value, NotesProvider provider) async {
-    if (value.isEmpty) {
+    final trimmedValue = value.trim();
+    if (trimmedValue.isEmpty) {
       await clearSearch(provider);
       return;
     }
 
     _searchDebounce?.cancel();
+    final requestId = ++_searchRequestId;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
-      final query = SearchQueryParser.parse(value);
+      final query = SearchQueryParser.parse(trimmedValue);
       final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id);
+      if (requestId != _searchRequestId || _searchTextController.text.trim() != trimmedValue) return;
       if (mounted) setState(() => _activeQuery = query);
       provider.init(foundNotes);
     });
