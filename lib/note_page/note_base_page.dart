@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
@@ -357,6 +358,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         if (!context.mounted) return;
                         Navigator.pop(context);
                         break;
+                      case 4:
+                        if (note.categoryId == null) break;
+                        await NotePageRepository.setHiddenFromHome(note.id, !note.hidden);
+                        note.hidden = !note.hidden;
+                        if (context.mounted) Navigator.pop(context);
+                        break;
                       default:
                     }
                   },
@@ -375,6 +382,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [Icon(Icons.folder_outlined), Text("category")],
                           ),
+                        ),
+                        if (note.categoryId != null) PopupMenuItem<int>(
+                          value: 4,
+                          child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [Icon(note.hidden ? Icons.visibility : Icons.visibility_off), Text(note.hidden ? 'unhide from home' : 'hide from home')]),
                         ),
                         const PopupMenuItem<int>(
                           value: 3,
@@ -402,7 +413,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             DateFormat('d MMMM yyyy').format(note.date.toDateTime()),
                           )),
                       SizedBox(
-                        width: 250,
+                        // Give the title more room while keeping the header's
+                        // date, back, and save controls in their existing slots.
+                        width: min(320, MediaQuery.sizeOf(context).width - 120),
                         height: 40,
                         child: Opacity(
                             opacity: 0.9,

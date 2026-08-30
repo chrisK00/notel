@@ -30,6 +30,7 @@ class StringSettings {
   static const timeShortcutKey = "timeShortcutKey";
   static const previewFontSizeKey = "previewFontSize";
   static const previewTitleFontSizeKey = "previewTitleFontSize";
+  static String categoryHiddenDefaultKey(int categoryId) => 'categoryHiddenDefault:$categoryId';
 
   factory StringSettings.fromMap(Map<String, dynamic> map) =>
       StringSettings(map['id'], map['value'] as String);

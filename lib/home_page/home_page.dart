@@ -43,7 +43,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadNotes() async {
     final provider = Provider.of<NotesProvider>(context, listen: false);
     await provider.loadCategories();
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
     if (!mounted) return;
     provider.init(loadedNotes);
   }
@@ -263,6 +263,14 @@ class _HomePageState extends State<HomePage> {
           PopupMenuButton<int>(
             icon: const Icon(Icons.more_horiz),
             onSelected: (item) async {
+              if (item == 5 || item == 6) {
+                await provider.setCategoryHomeVisibility(item == 6);
+                return;
+              }
+              if (item >= 2) {
+                await provider.setSort(NoteSort.values[item - 2]);
+                return;
+              }
               if (item == 1) {
                 final categoryToDelete = provider.selectedCategory;
                 if (categoryToDelete == null) return;
@@ -274,7 +282,19 @@ class _HomePageState extends State<HomePage> {
                     successBtnText: "Cancel",
                   ),
                 );
-                if (shouldCancel == false && mounted) {
+                var confirmed = shouldCancel == false;
+                if (confirmed && provider.notes.isNotEmpty) {
+                  final secondConfirmation = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => YesOrNoDialog(
+                      title: "This will permanently delete ${provider.notes.length} note${provider.notes.length == 1 ? '' : 's'}. Continue?",
+                      dangerBtnText: "Delete all",
+                      successBtnText: "Cancel",
+                    ),
+                  );
+                  confirmed = secondConfirmation == false;
+                }
+                if (confirmed && mounted) {
                   _searchTextController.clear();
                   _activeQuery = null;
                   await provider.deleteCategory(categoryToDelete.id);
@@ -282,6 +302,13 @@ class _HomePageState extends State<HomePage> {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem<int>(value: 5, child: Text('Hide all notes from home')),
+              const PopupMenuItem<int>(value: 6, child: Text('Show all notes on home')),
+              const PopupMenuDivider(),
+              PopupMenuItem<int>(value: 2, child: Text('Sort: Created${provider.sort == NoteSort.created ? ' ✓' : ''}')),
+              PopupMenuItem<int>(value: 3, child: Text('Sort: Name${provider.sort == NoteSort.name ? ' ✓' : ''}')),
+              PopupMenuItem<int>(value: 4, child: Text('Sort: Last modified${provider.sort == NoteSort.modified ? ' ✓' : ''}')),
+              const PopupMenuDivider(),
               const PopupMenuItem<int>(
                 value: 1,
                 child: Row(
@@ -521,7 +548,7 @@ class _HomePageState extends State<HomePage> {
   Future clearSearch(NotesProvider provider) async {
     _searchDebounce?.cancel();
     final requestId = ++_searchRequestId;
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
     if (requestId != _searchRequestId) return;
     provider.init(loadedNotes);
     setState(() {
@@ -541,7 +568,7 @@ class _HomePageState extends State<HomePage> {
     final requestId = ++_searchRequestId;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
       final query = SearchQueryParser.parse(trimmedValue);
-      final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id);
+      final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
       if (requestId != _searchRequestId || _searchTextController.text.trim() != trimmedValue) return;
       if (mounted) setState(() => _activeQuery = query);
       provider.init(foundNotes);
@@ -601,7 +628,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
               SizedBox(
-                width: 250,
+                width: 270,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -616,12 +643,12 @@ class _HomePageState extends State<HomePage> {
                           )
                         : Text(n.title!,
                             style: TextStyle(fontSize: _previewTitleFontSize),
-                            overflow: TextOverflow.ellipsis, maxLines: 2),
+                            overflow: TextOverflow.ellipsis, maxLines: 1),
                     if (_showLastModifiedSettings.value && n.lastModified != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.55)),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.70)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
