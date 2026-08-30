@@ -26,7 +26,8 @@ void main() {
             date TEXT,
             title TEXT,
             lastModified TEXT,
-            categoryId INTEGER
+            categoryId INTEGER,
+            hidden INTEGER NOT NULL DEFAULT 0
           )
         ''');
         await db.execute('''
