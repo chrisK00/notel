@@ -172,14 +172,6 @@ class NotesProvider extends ChangeNotifier {
     _notes.sort((a, b) {
       final dateComp = b.date.compareTo(a.date);
       if (dateComp != 0) return dateComp;
-      if (a.lastModified != null && b.lastModified != null) {
-        final modComp = b.lastModified!.compareTo(a.lastModified!);
-        if (modComp != 0) return modComp;
-      } else if (a.lastModified != null) {
-        return -1;
-      } else if (b.lastModified != null) {
-        return 1;
-      }
       return b.id.compareTo(a.id);
     });
   }

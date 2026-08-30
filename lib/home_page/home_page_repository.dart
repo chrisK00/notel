@@ -42,7 +42,7 @@ class HomePageRepository {
           categoryId
         FROM NOTE
         $where
-        ORDER BY date DESC, lastModified DESC, id DESC
+        ORDER BY date DESC, id DESC
         LIMIT ? OFFSET ?
         ''', args);
 
@@ -172,7 +172,7 @@ class HomePageRepository {
         categoryId
       FROM Note
       $where
-      ORDER BY Note.date DESC, Note.lastModified DESC, Note.id DESC
+      ORDER BY Note.date DESC, Note.id DESC
     ''';
 
     final rows = await Db.instance.rawQuery(sql, args);

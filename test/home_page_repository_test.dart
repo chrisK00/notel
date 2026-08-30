@@ -110,20 +110,20 @@ void main() {
       expect(page[1].id, 4);
     });
 
-    test('loadNotes returns notes with same date ordered by lastModified and id descending', () async {
+    test('loadNotes returns notes with same date ordered by id, not lastModified', () async {
       await db.insert('Note', {
         'id': 10,
         'title': 'Older Note',
         'text': '[]',
         'date': '2026-08-29',
-        'lastModified': '2026-08-29 10:15:10.000',
+        'lastModified': '2026-08-29 10:15:45.000',
       });
       await db.insert('Note', {
         'id': 11,
         'title': 'Newer Note',
         'text': '[]',
         'date': '2026-08-29',
-        'lastModified': '2026-08-29 10:15:45.000',
+        'lastModified': '2026-08-29 10:15:10.000',
       });
 
       final notes = (await HomePageRepository.loadNotes(offset: 0)).toList();
