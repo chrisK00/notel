@@ -15,7 +15,7 @@ class HomePageRepository {
                   FROM (
                     SELECT value
                     FROM json_each(CASE WHEN json_valid(Note.text) = 1 THEN Note.text ELSE '[]' END)
-                    LIMIT 3
+                    LIMIT 4
                   ) AS json_data
                 ),
                 ''

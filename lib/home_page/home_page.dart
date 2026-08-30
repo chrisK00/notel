@@ -31,6 +31,9 @@ class _HomePageState extends State<HomePage> {
   final _settingsRepository = SettingsRepository(Db.instance);
   final _scrollController = ScrollController();
   var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
+  var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  double _previewFontSize = 14;
+  double _previewTitleFontSize = 17;
   Timer? _searchDebounce;
   int _searchRequestId = 0;
   bool _showExportReminder = false;
@@ -47,9 +50,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> loadSettings() async {
     final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
-    if (!mounted || settings == null) return;
+    final showModified = await _settingsRepository.getOrNull(BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
+    final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
+    final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    if (!mounted) return;
     setState(() {
-      _hideNoteTextSettings = settings;
+      if (settings != null) _hideNoteTextSettings = settings;
+      if (showModified != null) _showLastModifiedSettings = showModified;
+      _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
+      _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
     });
   }
 
@@ -603,14 +612,16 @@ class _HomePageState extends State<HomePage> {
                             _activeQuery,
                             overflow: TextOverflow.ellipsis,
                             maxLines: 3,
+                            fontSize: _previewFontSize,
                           )
                         : Text(n.title!,
-                            textScaler: const TextScaler.linear(1.2), overflow: TextOverflow.ellipsis, maxLines: 2),
-                    if (n.lastModified != null) ...[
+                            style: TextStyle(fontSize: _previewTitleFontSize),
+                            overflow: TextOverflow.ellipsis, maxLines: 2),
+                    if (_showLastModifiedSettings.value && n.lastModified != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.55)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -629,6 +640,7 @@ class _HomePageState extends State<HomePage> {
     SearchQuery? query, {
     TextOverflow overflow = TextOverflow.clip,
     int? maxLines,
+    double? fontSize,
   }) {
     // Collect all terms to highlight: bare text terms + titleTerms + startsWithTerms.
     final terms = <String>[];
@@ -641,7 +653,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (terms.isEmpty || text.isEmpty) {
-      return Text(text, overflow: overflow, maxLines: maxLines);
+      return Text(text, overflow: overflow, maxLines: maxLines, style: TextStyle(fontSize: fontSize));
     }
 
     // Build a combined regex that matches any of the terms (case-insensitive).
@@ -669,7 +681,10 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Text.rich(
-      TextSpan(children: spans),
+      TextSpan(
+        style: TextStyle(fontSize: _previewFontSize, color: Theme.of(context).textTheme.bodyMedium?.color),
+        children: spans,
+      ),
       overflow: overflow,
       maxLines: maxLines,
     );

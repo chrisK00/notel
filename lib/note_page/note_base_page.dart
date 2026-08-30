@@ -311,12 +311,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         controller: controller,
                         padding: const EdgeInsets.only(left: 25, right: 25, top: 20),
                         expands: true))),
-          ],
-        ),
-            bottomNavigationBar: SafeArea(
+            SafeArea(
               top: false,
               child: NoteTextToolbar(controller: controller),
-            )),
+            ),
+          ],
+        ),
+            ),
       );
     });
   }
