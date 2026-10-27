@@ -9,6 +9,7 @@ class BoolSettings {
   static const hideNoteTextKey = "hideNoteText";
   static const autoBackupEnabledKey = "autoBackupEnabled";
   static const showLastModifiedKey = "showLastModified";
+  static const autoEditExistingNotesKey = "autoEditExistingNotes";
 
   factory BoolSettings.fromMap(Map<String, dynamic> map) => BoolSettings(
         map['id'],

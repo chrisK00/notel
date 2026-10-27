@@ -17,7 +17,7 @@ class CategoryRepository {
     final sortOrder = (lastOrder.single['value'] as int? ?? -1) + 1;
     final id = await Db.instance.insert(
       Db.categoryTable,
-      {'name': trimmedName, 'sortOrder': sortOrder},
+      {'name': trimmedName, 'sortOrder': sortOrder, 'showNoteDate': 1},
     );
     return Category(id: id, name: trimmedName);
   }
@@ -48,6 +48,22 @@ class CategoryRepository {
     );
   }
 
+  static Future<void> updateDisplaySettings(
+    int id, {
+    required bool showNoteDate,
+    required bool? showLastModified,
+  }) async {
+    await Db.instance.update(
+      Db.categoryTable,
+      {
+        'showNoteDate': showNoteDate ? 1 : 0,
+        'showLastModified': showLastModified == null ? null : (showLastModified ? 1 : 0),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   static Future<void> delete(int id) async {
     await Db.instance.transaction((txn) async {
       await txn.delete(
@@ -65,11 +81,21 @@ class CategoryRepository {
 
   static Future<void> _ensureSortOrderColumn() async {
     final columns = await Db.instance.rawQuery('PRAGMA table_info(${Db.categoryTable})');
-    if (columns.any((column) => column['name'] == 'sortOrder')) return;
-
-    await Db.instance.execute(
-      'ALTER TABLE ${Db.categoryTable} ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0',
-    );
-    await Db.instance.execute('UPDATE ${Db.categoryTable} SET sortOrder = id');
+    if (!columns.any((column) => column['name'] == 'sortOrder')) {
+      await Db.instance.execute(
+        'ALTER TABLE ${Db.categoryTable} ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0',
+      );
+      await Db.instance.execute('UPDATE ${Db.categoryTable} SET sortOrder = id');
+    }
+    if (!columns.any((column) => column['name'] == 'showNoteDate')) {
+      await Db.instance.execute(
+        'ALTER TABLE ${Db.categoryTable} ADD COLUMN showNoteDate INTEGER NOT NULL DEFAULT 1',
+      );
+    }
+    if (!columns.any((column) => column['name'] == 'showLastModified')) {
+      await Db.instance.execute(
+        'ALTER TABLE ${Db.categoryTable} ADD COLUMN showLastModified INTEGER',
+      );
+    }
   }
 }

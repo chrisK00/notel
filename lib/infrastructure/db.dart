@@ -32,6 +32,9 @@ class Db {
     if (oldVersion < 6) {
       await _version6(db);
     }
+    if (oldVersion < 7) {
+      await _version7(db);
+    }
   }
 
   static Future<void> _setupDatabase(Database db, int version) async {
@@ -43,6 +46,8 @@ class Db {
     await _version3(db);
     await _version4(db);
     await _version5(db);
+    await _version6(db);
+    await _version7(db);
   }
 
   static Future<void> _version2(Database db) async {
@@ -83,6 +88,21 @@ class Db {
     }
   }
 
+  static Future<void> _version7(Database db) async {
+    final columns = await db.rawQuery("PRAGMA table_info(Category)");
+    if (!columns.any((c) => c['name'] == 'sortOrder')) {
+      await db.execute("ALTER TABLE Category ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0");
+      // Keep the current order stable for existing categories during the upgrade.
+      await db.execute("UPDATE Category SET sortOrder = id");
+    }
+    if (!columns.any((c) => c['name'] == 'showNoteDate')) {
+      await db.execute("ALTER TABLE Category ADD COLUMN showNoteDate INTEGER NOT NULL DEFAULT 1");
+    }
+    if (!columns.any((c) => c['name'] == 'showLastModified')) {
+      await db.execute("ALTER TABLE Category ADD COLUMN showLastModified INTEGER");
+    }
+  }
+
   static Future initialize({bool useDebugDatabase = false}) async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbName = useDebugDatabase ? debugDatabaseName : databaseName;
@@ -93,7 +113,10 @@ class Db {
         onOpen: (db) async {
           await db.execute("""CREATE TABLE IF NOT EXISTS Category(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            sortOrder INTEGER NOT NULL DEFAULT 0,
+            showNoteDate INTEGER NOT NULL DEFAULT 1,
+            showLastModified INTEGER
           )""");
           final columns = await db.rawQuery("PRAGMA table_info(Note)");
           final hasCategoryId = columns.any((c) => c['name'] == 'categoryId');
@@ -106,7 +129,8 @@ class Db {
           }
           final hasHidden = columns.any((c) => c['name'] == 'hidden');
           if (!hasHidden) await db.execute("ALTER TABLE Note ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0");
+          await _version7(db);
         },
-        version: 6);
+        version: 7);
   }
 }

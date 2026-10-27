@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:intl/intl.dart';
@@ -21,11 +20,20 @@ import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 
 abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
-  final controller = QuillController.basic();
+  final controller = QuillController(
+    document: Document(),
+    selection: const TextSelection.collapsed(offset: 0),
+    keepStyleOnNewLine: false,
+  );
   final FocusNode _focusNode = FocusNode();
+  final ScrollController _editorScrollController = ScrollController();
   Note note = Note(id: 0);
   var hasUnsavedChanges = false;
   String timeShortcut = "..";
+  bool get isNewNote => false;
+  bool _autoEditExistingNotes = false;
+  bool _isDocEmpty = false;
+  bool get shouldAutoFocus => isNewNote || _isDocEmpty || _autoEditExistingNotes;
   final TextEditingController textEditingController = TextEditingController();
   StreamSubscription<DocChange>? _docChangeSub;
 
@@ -47,14 +55,30 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   @override
   void initState() {
     super.initState();
+    _focusNode.canRequestFocus = isNewNote;
     _loadTimeShortcut();
-    initNote().then((_) {
-      if (mounted) {
-        if (searchMatches.isEmpty) setCaretToEnd();
-        attachDocListener();
-        setState(() => hasUnsavedChanges = false);
+    _initAll();
+  }
+
+  Future<void> _initAll() async {
+    await _loadAutoEditSetting();
+    await initNote();
+    if (mounted) {
+      _isDocEmpty = controller.document.toPlainText().trim().isEmpty;
+      if (shouldAutoFocus) {
+        _focusNode.canRequestFocus = true;
+        if (searchMatches.isEmpty) {
+          setCaretToEnd();
+        }
+        _focusNode.requestFocus();
+      } else {
+        _focusNode.canRequestFocus = false;
+        _focusNode.unfocus();
+        FocusManager.instance.primaryFocus?.unfocus();
       }
-    });
+      attachDocListener();
+      setState(() => hasUnsavedChanges = false);
+    }
   }
 
   Future<void> _loadTimeShortcut() async {
@@ -69,11 +93,60 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     } catch (_) {}
   }
 
+  Future<void> _loadAutoEditSetting() async {
+    try {
+      final setting = await SettingsRepository(Db.instance).getOrNull(
+        BoolSettings.autoEditExistingNotesKey,
+        BoolSettings.fromMap,
+      );
+      if (setting != null) {
+        _autoEditExistingNotes = setting.value;
+      }
+    } catch (_) {}
+  }
+
+  void handleBottomTap() {
+    _focusNode.canRequestFocus = true;
+    if (controller.document.isEmpty()) {
+      controller.updateSelection(
+        const TextSelection.collapsed(offset: 0),
+        ChangeSource.local,
+      );
+      _focusNode.requestFocus();
+      return;
+    }
+
+    final plainText = controller.document.toPlainText();
+    if (plainText.trim().isEmpty) {
+      controller.updateSelection(
+        const TextSelection.collapsed(offset: 0),
+        ChangeSource.local,
+      );
+    } else if (plainText.endsWith('\n\n')) {
+      final targetPos = controller.document.length > 0 ? controller.document.length - 1 : 0;
+      controller.updateSelection(
+        TextSelection.collapsed(offset: targetPos),
+        ChangeSource.local,
+      );
+    } else {
+      final insertPos = controller.document.length > 0 ? controller.document.length - 1 : 0;
+      controller.replaceText(
+        insertPos,
+        0,
+        '\n',
+        TextSelection.collapsed(offset: insertPos + 1),
+      );
+      setState(() => hasUnsavedChanges = true);
+    }
+    _focusNode.requestFocus();
+  }
+
   @override
   void dispose() {
     detachDocListener();
     controller.dispose();
     _focusNode.dispose();
+    _editorScrollController.dispose();
     super.dispose();
   }
 
@@ -191,6 +264,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       note.title = textEditingController.text;
       final changesMadeForTitle = await NotePageRepository.updateNoteTitle(note.id, note.title);
       writeLine('Updated titles $changesMadeForTitle');
+      if (mounted) {
+        setState(() => note.lastModified = DateTime.now());
+      }
       await notesProvider.update(note.id);
       AutoBackupService.checkAndRun();
     } catch (e) {
@@ -247,7 +323,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
 // TODO move this to edit page?
-  void setCaretToEnd() => controller.moveCursorToPosition(controller.document.length);
+  void setCaretToEnd() {
+    final pos = controller.document.length > 0 ? controller.document.length - 1 : 0;
+    controller.updateSelection(
+      TextSelection.collapsed(offset: pos),
+      ChangeSource.local,
+    );
+  }
 
   Future _showSaveDialog(NotesProvider notesProvider) async {
     if (hasUnsavedChanges) {
@@ -305,20 +387,67 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             actions(context, provider),
             if (showSearchNavigator && searchMatches.isNotEmpty) searchNavigatorBanner(),
             Expanded(
-                child: QuillEditor.basic(
-                    focusNode: _focusNode,
-                    configurations: QuillEditorConfigurations(
-                        autoFocus: true,
+              child: CustomScrollView(
+                slivers: [
+                  // Title scrolls away with the note body
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Opacity(
+                        opacity: 0.9,
+                        child: TextField(
+                          controller: textEditingController,
+                          onChanged: (_) => setState(() => hasUnsavedChanges = true),
+                          maxLines: null,
+                          minLines: 1,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Note body; CustomScrollView owns all scrolling
+                  SliverToBoxAdapter(
+                    child: QuillEditor(
+                      focusNode: _focusNode,
+                      scrollController: _editorScrollController,
+                      configurations: QuillEditorConfigurations(
+                        autoFocus: shouldAutoFocus,
                         controller: controller,
-                        padding: const EdgeInsets.only(left: 25, right: 25, top: 20),
-                        expands: true))),
+                        padding: const EdgeInsets.only(left: 25, right: 25, top: 20, bottom: 20),
+                        expands: false,
+                        scrollable: false,
+                        onTapDown: (details, getPositionForOffset) {
+                          _focusNode.canRequestFocus = true;
+                          return false;
+                        },
+                        onTapUp: (details, getPositionForOffset) {
+                          _focusNode.canRequestFocus = true;
+                          return false;
+                        },
+                      ),
+                    ),
+                  ),
+                  // Bottom tap area to create newline / focus like Google Keep
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: handleBottomTap,
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 120),
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             SafeArea(
               top: false,
               child: NoteTextToolbar(controller: controller),
             ),
           ],
-        ),
-            ),
+        )),
       );
     });
   }
@@ -369,6 +498,16 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                   },
                   iconColor: Theme.of(context).colorScheme.secondary.withOpacity(0.7),
                   itemBuilder: (context) => [
+                        if (note.lastModified != null)
+                          PopupMenuItem<int>(
+                            enabled: false,
+                            height: 28,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Edited ${DateFormat('d MMM, HH:mm').format(note.lastModified!)}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
                         const PopupMenuItem<int>(
                           value: 1,
                           child: Row(
@@ -396,40 +535,21 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         )
                       ])
             ]),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
+            Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
                       iconSize: 30,
                       onPressed: () async => _handleBackNavigation(notesProvider),
                       icon: const Icon(Icons.arrow_back)),
-                  Column(
-                    children: [
-                      TextButton(
-                          onPressed: () async => await updateDate(notesProvider),
-                          child: Text(
-                            DateFormat('d MMMM yyyy').format(note.date.toDateTime()),
-                          )),
-                      SizedBox(
-                        // Give the title more room while keeping the header's
-                        // date, back, and save controls in their existing slots.
-                        width: min(320, MediaQuery.sizeOf(context).width - 120),
-                        height: 40,
-                        child: Opacity(
-                            opacity: 0.9,
-                            child: TextField(
-                              controller: textEditingController,
-                              onChanged: (_) => setState(() => hasUnsavedChanges = true),
-                            )),
-                      )
-                    ],
-                  ),
-                  saveButton(notesProvider)
+                  TextButton(
+                      onPressed: () async => await updateDate(notesProvider),
+                      child: Text(
+                        DateFormat('d MMMM yyyy').format(note.date.toDateTime()),
+                      )),
+                  saveButton(notesProvider),
                 ],
               ),
-            ),
           ],
         ),
       ),

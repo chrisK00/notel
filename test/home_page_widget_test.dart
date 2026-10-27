@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notel/home_page/home_page.dart';
+import 'package:notel/infrastructure/category_repository.dart';
 import 'package:notel/infrastructure/date_only.dart';
 import 'package:notel/infrastructure/db.dart';
-import 'package:notel/infrastructure/note.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -41,7 +41,10 @@ void main() {
         await db.execute('''
           CREATE TABLE IF NOT EXISTS Category(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL
+            name TEXT NOT NULL,
+            sortOrder INTEGER NOT NULL DEFAULT 0,
+            showNoteDate INTEGER NOT NULL DEFAULT 1,
+            showLastModified INTEGER
           )
         ''');
       },
@@ -176,5 +179,70 @@ void main() {
     // Both notes restored
     expect(find.text('Flutter Architecture'), findsOneWidget);
     expect(find.text('Grocery Run'), findsOneWidget);
+  });
+
+  testWidgets('Category popup menu has compact sort options and visible headers', (tester) async {
+    int catId = 0;
+    await tester.runAsync(() async {
+      catId = await db.insert('Category', {
+        'name': 'Work',
+        'showNoteDate': 0,
+        'showLastModified': 1,
+      });
+      await db.insert('Note', {
+        'id': 10,
+        'title': 'Test Note In Category',
+        'text': '',
+        'date': '2026-08-10',
+        'lastModified': '2026-08-28 12:00:00.000',
+        'categoryId': catId,
+      });
+    });
+
+    final notesProvider = NotesProvider();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<NotesProvider>.value(
+        value: notesProvider,
+        child: const MaterialApp(
+          home: HomePage(),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    await tester.runAsync(() async {
+      final category = (await CategoryRepository.getAll()).first;
+      await notesProvider.setSelectedCategory(category);
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final noteTitle = find.text('Test Note In Category');
+    expect(noteTitle, findsOneWidget);
+    final topLeft = tester.getTopLeft(noteTitle);
+    expect(topLeft.dx, greaterThanOrEqualTo(16.0));
+
+    final rowFinder = find.ancestor(of: noteTitle, matching: find.byType(ConstrainedBox)).first;
+    final rowSize = tester.getSize(rowFinder);
+    expect(rowSize.height, greaterThanOrEqualTo(54.0));
+
+    final moreBtn = find.byIcon(Icons.more_horiz);
+    await tester.tap(moreBtn);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Last edited date'), findsOneWidget);
+    expect(find.text('Sort options'), findsOneWidget);
+
+    expect(find.text('Created'), findsOneWidget);
+    expect(find.text('Name'), findsOneWidget);
+    expect(find.text('Last modified'), findsOneWidget);
+
+    final sortItem = find.ancestor(of: find.text('Created'), matching: find.byType(PopupMenuItem<int>)).first;
+    final itemSize = tester.getSize(sortItem);
+    expect(itemSize.height, lessThanOrEqualTo(36.0));
   });
 }

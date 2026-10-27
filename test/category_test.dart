@@ -6,14 +6,30 @@ import 'package:notel/infrastructure/note.dart';
 void main() {
   group('Category model tests', () {
     test('toMap and fromMap roundtrip', () {
-      final cat = Category(id: 1, name: 'Work');
+      final cat = Category(
+        id: 1,
+        name: 'Work',
+        showNoteDate: false,
+        showLastModified: true,
+      );
       final map = cat.toMap();
       expect(map['id'], 1);
       expect(map['name'], 'Work');
+      expect(map['showNoteDate'], 0);
+      expect(map['showLastModified'], 1);
 
       final reconstructed = Category.fromMap(map);
       expect(reconstructed.id, 1);
       expect(reconstructed.name, 'Work');
+      expect(reconstructed.showNoteDate, isFalse);
+      expect(reconstructed.showLastModified, isTrue);
+    });
+
+    test('missing category display settings use compatible defaults', () {
+      final category = Category.fromMap({'id': 1, 'name': 'Existing'});
+
+      expect(category.showNoteDate, isTrue);
+      expect(category.showLastModified, isNull);
     });
 
     test('Note model categoryId serialization', () {

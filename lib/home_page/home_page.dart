@@ -43,7 +43,9 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadNotes() async {
     final provider = Provider.of<NotesProvider>(context, listen: false);
     await provider.loadCategories();
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+    final loadedNotes = await HomePageRepository.loadNotes(
+        categoryId: provider.selectedCategory?.id,
+        sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
     if (!mounted) return;
     provider.init(loadedNotes);
   }
@@ -52,7 +54,8 @@ class _HomePageState extends State<HomePage> {
     final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
     final showModified = await _settingsRepository.getOrNull(BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
     final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
-    final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    final titleSize =
+        await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
     if (!mounted) return;
     setState(() {
       if (settings != null) _hideNoteTextSettings = settings;
@@ -230,6 +233,60 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  PopupMenuItem<int> _categoryMenuItem({
+    required int value,
+    required String text,
+    bool? checked,
+    IconData? icon,
+    bool isDestructive = false,
+  }) {
+    return PopupMenuItem<int>(
+      value: value,
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Row(
+        children: [
+          if (checked != null) ...[
+            SizedBox(
+              width: 20,
+              child: checked ? const Icon(Icons.check, size: 18) : null,
+            ),
+            const SizedBox(width: 8),
+          ] else if (icon != null) ...[
+            Icon(icon, size: 18, color: isDestructive ? Colors.red : null),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: isDestructive ? Colors.red : null,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<int> _categoryMenuHeader(BuildContext context, String title) {
+    return PopupMenuItem<int>(
+      enabled: false,
+      height: 26,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      ),
+    );
+  }
+
   Widget categoryHeader(NotesProvider provider) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -267,8 +324,23 @@ class _HomePageState extends State<HomePage> {
                 await provider.setCategoryHomeVisibility(item == 6);
                 return;
               }
-              if (item >= 2) {
-                await provider.setSort(NoteSort.values[item - 2]);
+              final category = provider.selectedCategory;
+              if (category == null) return;
+              if (item == 7 || item == 8 || item == 9 || item == 10) {
+                await provider.updateCategoryDisplaySettings(
+                  category.id,
+                  showNoteDate: item == 7 ? !category.showNoteDate : category.showNoteDate,
+                  showLastModified: switch (item) {
+                    8 => null,
+                    9 => true,
+                    10 => false,
+                    _ => category.showLastModified,
+                  },
+                );
+                return;
+              }
+              if (item == 11 || item == 12 || item == 13) {
+                await provider.setSort(NoteSort.values[item - 11]);
                 return;
               }
               if (item == 1) {
@@ -287,7 +359,8 @@ class _HomePageState extends State<HomePage> {
                   final secondConfirmation = await showDialog<bool>(
                     context: context,
                     builder: (context) => YesOrNoDialog(
-                      title: "This will permanently delete ${provider.notes.length} note${provider.notes.length == 1 ? '' : 's'}. Continue?",
+                      title:
+                          "This will permanently delete ${provider.notes.length} note${provider.notes.length == 1 ? '' : 's'}. Continue?",
                       dangerBtnText: "Delete all",
                       successBtnText: "Cancel",
                     ),
@@ -301,25 +374,66 @@ class _HomePageState extends State<HomePage> {
                 }
               }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem<int>(value: 5, child: Text('Hide all notes from home')),
-              const PopupMenuItem<int>(value: 6, child: Text('Show all notes on home')),
-              const PopupMenuDivider(),
-              PopupMenuItem<int>(value: 2, child: Text('Sort: Created${provider.sort == NoteSort.created ? ' ✓' : ''}')),
-              PopupMenuItem<int>(value: 3, child: Text('Sort: Name${provider.sort == NoteSort.name ? ' ✓' : ''}')),
-              PopupMenuItem<int>(value: 4, child: Text('Sort: Last modified${provider.sort == NoteSort.modified ? ' ✓' : ''}')),
-              const PopupMenuDivider(),
-              const PopupMenuItem<int>(
-                value: 1,
-                child: Row(
-                  children: [
-                    Icon(Icons.delete, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('Delete category'),
-                  ],
+            itemBuilder: (context) {
+              final category = provider.selectedCategory!;
+              return [
+                _categoryMenuItem(
+                  value: 7,
+                  text: 'Show note date',
+                  checked: category.showNoteDate,
                 ),
-              ),
-            ],
+                const PopupMenuDivider(height: 1),
+                _categoryMenuHeader(context, 'Last edited date'),
+                _categoryMenuItem(
+                  value: 8,
+                  text: 'Use global setting',
+                  checked: category.showLastModified == null,
+                ),
+                _categoryMenuItem(
+                  value: 9,
+                  text: 'Show',
+                  checked: category.showLastModified == true,
+                ),
+                _categoryMenuItem(
+                  value: 10,
+                  text: 'Hide',
+                  checked: category.showLastModified == false,
+                ),
+                const PopupMenuDivider(height: 1),
+                _categoryMenuHeader(context, 'Sort options'),
+                _categoryMenuItem(
+                  value: 11,
+                  text: 'Created',
+                  checked: provider.sort == NoteSort.created,
+                ),
+                _categoryMenuItem(
+                  value: 12,
+                  text: 'Name',
+                  checked: provider.sort == NoteSort.name,
+                ),
+                _categoryMenuItem(
+                  value: 13,
+                  text: 'Last modified',
+                  checked: provider.sort == NoteSort.modified,
+                ),
+                const PopupMenuDivider(height: 1),
+                _categoryMenuItem(
+                  value: 5,
+                  text: 'Hide all notes from home',
+                ),
+                _categoryMenuItem(
+                  value: 6,
+                  text: 'Show all notes on home',
+                ),
+                const PopupMenuDivider(height: 1),
+                _categoryMenuItem(
+                  value: 1,
+                  text: 'Delete category',
+                  icon: Icons.delete,
+                  isDestructive: true,
+                ),
+              ];
+            },
           ),
         ],
       ),
@@ -548,7 +662,9 @@ class _HomePageState extends State<HomePage> {
   Future clearSearch(NotesProvider provider) async {
     _searchDebounce?.cancel();
     final requestId = ++_searchRequestId;
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+    final loadedNotes = await HomePageRepository.loadNotes(
+        categoryId: provider.selectedCategory?.id,
+        sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
     if (requestId != _searchRequestId) return;
     provider.init(loadedNotes);
     setState(() {
@@ -568,7 +684,9 @@ class _HomePageState extends State<HomePage> {
     final requestId = ++_searchRequestId;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
       final query = SearchQueryParser.parse(trimmedValue);
-      final foundNotes = await HomePageRepository.findNotes(query, categoryId: provider.selectedCategory?.id, sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+      final foundNotes = await HomePageRepository.findNotes(query,
+          categoryId: provider.selectedCategory?.id,
+          sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
       if (requestId != _searchRequestId || _searchTextController.text.trim() != trimmedValue) return;
       if (mounted) setState(() => _activeQuery = query);
       provider.init(foundNotes);
@@ -583,52 +701,64 @@ class _HomePageState extends State<HomePage> {
   }
 
   GestureDetector noteRow(BuildContext context, Note n) {
+    final category = Provider.of<NotesProvider>(context, listen: false).selectedCategory;
+    final showNoteDate = category?.showNoteDate ?? true;
+    final showLastModified = category?.showLastModified ?? _showLastModifiedSettings.value;
     writeLine("Title ${n.title}");
     return GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () async {
-          final query = _searchTextController.text.trim().isNotEmpty
-              ? (_activeQuery ?? SearchQueryParser.parse(_searchTextController.text))
-              : null;
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (c) => EditPage(
-                noteId: n.id,
-                highlightQuery: query,
-              ),
+      behavior: HitTestBehavior.translucent,
+      onTap: () async {
+        final query = _searchTextController.text.trim().isNotEmpty
+            ? (_activeQuery ?? SearchQueryParser.parse(_searchTextController.text))
+            : null;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (c) => EditPage(
+              noteId: n.id,
+              highlightQuery: query,
             ),
-          );
-        },
+          ),
+        );
+      },
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minHeight: showNoteDate ? 72 : 58),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.symmetric(
+            horizontal: showNoteDate ? 16 : 20,
+            vertical: showNoteDate ? 8 : 14,
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    n.date.isToday() ? 'today' : '',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              if (showNoteDate) ...[
+                SizedBox(
+                  width: 72,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        n.date.isToday() ? 'today' : '',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        n.date.day.toString(),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                      ),
+                      Text(
+                        DateFormat('MMMM').format(n.date.toDateTime()),
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      Text(
+                        DateFormat('yyyy').format(n.date.toDateTime()),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
                   ),
-                  Text(
-                    n.date.day.toString(),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                  ),
-                  Text(
-                    DateFormat('MMMM').format(n.date.toDateTime()),
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  Text(
-                    DateFormat('yyyy').format(n.date.toDateTime()),
-                    style: const TextStyle(fontSize: 12),
-                  )
-                ],
-              ),
-              SizedBox(
-                width: 270,
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -641,14 +771,22 @@ class _HomePageState extends State<HomePage> {
                             maxLines: 3,
                             fontSize: _previewFontSize,
                           )
-                        : Text(n.title!,
-                            style: TextStyle(fontSize: _previewTitleFontSize),
-                            overflow: TextOverflow.ellipsis, maxLines: 1),
-                    if (_showLastModifiedSettings.value && n.lastModified != null) ...[
-                      const SizedBox(height: 4),
+                        : Text(
+                            n.title!,
+                            style: TextStyle(
+                              fontSize: _previewTitleFontSize,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                    if (showLastModified && n.lastModified != null) ...[
+                      const SizedBox(height: 5),
                       Text(
                         'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11, color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.70)),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontSize: 12,
+                              color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.85),
+                            ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -657,7 +795,9 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-        ));
+        ),
+      ),
+    );
   }
 
   /// Builds a [RichText] widget with all search term occurrences highlighted.

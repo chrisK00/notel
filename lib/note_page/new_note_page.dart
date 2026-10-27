@@ -15,6 +15,8 @@ class NewNotePage extends StatefulWidget {
 
 class _NewNotePageState extends NoteBasePage<NewNotePage> {
   @override
+  bool get isNewNote => true;
+  @override
   Future initNote() async {
     note = await NotePageRepository.createNote(categoryId: widget.categoryId);
   }

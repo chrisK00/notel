@@ -102,6 +102,7 @@ void main() {
   test('categories retain a user-selected order', () async {
     final db = await openDatabase(
       inMemoryDatabasePath,
+      version: 1,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE Category(

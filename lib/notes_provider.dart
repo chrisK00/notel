@@ -108,6 +108,23 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateCategoryDisplaySettings(
+    int id, {
+    required bool showNoteDate,
+    required bool? showLastModified,
+  }) async {
+    try {
+      await CategoryRepository.updateDisplaySettings(
+        id,
+        showNoteDate: showNoteDate,
+        showLastModified: showLastModified,
+      );
+      await loadCategories();
+    } catch (e) {
+      AppErrors.showError('Failed to update category display settings.');
+    }
+  }
+
   Future<void> reorderCategories(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex) return;
     if (oldIndex < newIndex) newIndex--;

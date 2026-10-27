@@ -25,6 +25,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
   var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  var _autoEditExistingNotesSettings = BoolSettings(BoolSettings.autoEditExistingNotesKey, false);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
   bool _autoBackupEnabled = false;
@@ -54,6 +55,10 @@ class _SettingsPageState extends State<SettingsPage> {
     final showModified = await _settingsRepository.getOrNull(
       BoolSettings.showLastModifiedKey, BoolSettings.fromMap,
     );
+    final autoEdit = await _settingsRepository.getOrNull(
+      BoolSettings.autoEditExistingNotesKey,
+      BoolSettings.fromMap,
+    );
     final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
     final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
     final autoDir = await _settingsRepository.getOrNull(
@@ -77,6 +82,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       if (hideSettings != null) _hideNoteSettings = hideSettings;
       if (showModified != null) _showLastModifiedSettings = showModified;
+      if (autoEdit != null) _autoEditExistingNotesSettings = autoEdit;
       _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
       _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
       _autoBackupEnabled = autoEnabled?.value ?? false;
@@ -248,6 +254,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   subtitle: const Text('Display when each note was last changed'),
                   value: _showLastModifiedSettings.value,
                   onChanged: toggleShowLastModified,
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.edit_note),
+                  title: const Text('Auto-Edit Existing Notes'),
+                  subtitle: const Text('Immediately start editing when opening an existing note'),
+                  value: _autoEditExistingNotesSettings.value,
+                  onChanged: toggleAutoEditExistingNotes,
                 ),
                 ListTile(title: Text('Preview text size (${_previewFontSize.round()}px)'), subtitle: Slider(value: _previewFontSize, min: 12, max: 22, divisions: 10, onChanged: _setPreviewFontSize)),
                 ListTile(title: Text('Preview title size (${_previewTitleFontSize.round()}px)'), subtitle: Slider(value: _previewTitleFontSize, min: 14, max: 28, divisions: 14, onChanged: _setPreviewTitleFontSize)),
@@ -456,6 +470,14 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _showLastModifiedSettings.value = value);
     await _settingsRepository.insertOrUpdate(
       _showLastModifiedSettings.id, _showLastModifiedSettings.toMap,
+    );
+  }
+
+  Future<void> toggleAutoEditExistingNotes(bool value) async {
+    setState(() => _autoEditExistingNotesSettings.value = value);
+    await _settingsRepository.insertOrUpdate(
+      _autoEditExistingNotesSettings.id,
+      _autoEditExistingNotesSettings.toMap,
     );
   }
 
