@@ -98,4 +98,31 @@ void main() {
 
     await db.close();
   });
+
+  test('categories retain a user-selected order', () async {
+    final db = await openDatabase(
+      inMemoryDatabasePath,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE Category(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+          )
+        ''');
+      },
+    );
+    Db.instance = db;
+
+    final work = await CategoryRepository.create('Work');
+    final personal = await CategoryRepository.create('Personal');
+    final errands = await CategoryRepository.create('Errands');
+
+    await CategoryRepository.updateOrder([errands.id, work.id, personal.id]);
+
+    expect(
+      (await CategoryRepository.getAll()).map((category) => category.name),
+      ['Errands', 'Work', 'Personal'],
+    );
+    await db.close();
+  });
 }

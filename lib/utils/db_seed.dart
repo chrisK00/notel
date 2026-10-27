@@ -10,6 +10,7 @@ class DebugUtil {
     await Db.instance.delete(Db.noteTable);
     await Db.instance.delete(Db.categoryTable);
     await Db.instance.insert(Db.categoryTable, Category(id: 1, name: 'Debug Category').toMap());
+    await Db.instance.insert(Db.categoryTable, Category(id: 2, name: 'Test Category 2').toMap());
     final batch = Db.instance.batch();
     for (int i = 1; i < 5; i++) {
       batch.insert(
@@ -17,8 +18,7 @@ class DebugUtil {
           Note(
                   id: i,
                   title: i % 2 == 0 ? "$i ape" : null,
-                  displayText:
-                      '[{"insert":"hi $i\\n energy pooper\\n"}, {"insert":"section 2\\n"}]',
+                  displayText: '[{"insert":"hi $i\\n energy pooper\\n"}, {"insert":"section 2\\n"}]',
                   date: DateOnly(today.year, 3, i))
               .toMap());
     }
@@ -30,6 +30,18 @@ class DebugUtil {
         displayText: '[{"insert":"This note belongs to Debug Category.\\n"}]',
         date: DateOnly(today.year, 3, 5),
         categoryId: 1,
+      ).toMap(),
+    );
+    batch.insert(
+      Db.noteTable,
+      Note(
+        id: 6,
+        title: 'Hidden Debug Note 2',
+        displayText: '[{"insert":"This note belongs to Debug Category.\\n"}]',
+        date: DateOnly(today.year, 3, 5),
+        categoryId: 1,
+        hidden: true,
+        lastModified: DateTime.now().subtract(const Duration(days: 1)),
       ).toMap(),
     );
     await batch.commit(noResult: true);

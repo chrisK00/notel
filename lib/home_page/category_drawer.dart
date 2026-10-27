@@ -101,19 +101,25 @@ class CategoryDrawer extends StatelessWidget {
                             style: TextStyle(color: Colors.grey),
                           ),
                         )
-                      : ListView.builder(
+                      : ReorderableListView.builder(
                           itemCount: provider.categories.length,
+                          buildDefaultDragHandles: false,
+                          onReorder: provider.reorderCategories,
                           itemBuilder: (context, index) {
                             final category = provider.categories[index];
                             final isSelected = provider.selectedCategory?.id == category.id;
-                            return ListTile(
-                              leading: const Icon(Icons.folder_outlined),
-                              title: Text(category.name),
-                              selected: isSelected,
-                              onTap: () async {
-                                if (context.mounted) Navigator.pop(context);
-                                await provider.setSelectedCategory(category);
-                              },
+                            return ReorderableDelayedDragStartListener(
+                              key: ValueKey(category.id),
+                              index: index,
+                              child: ListTile(
+                                leading: const Icon(Icons.folder_outlined),
+                                title: Text(category.name),
+                                selected: isSelected,
+                                onTap: () async {
+                                  if (context.mounted) Navigator.pop(context);
+                                  await provider.setSelectedCategory(category);
+                                },
+                              ),
                             );
                           },
                         ),

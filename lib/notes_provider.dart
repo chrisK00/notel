@@ -108,6 +108,31 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> reorderCategories(int oldIndex, int newIndex) async {
+    if (oldIndex == newIndex) return;
+    if (oldIndex < newIndex) newIndex--;
+
+    final reordered = List<Category>.of(_categories);
+    final category = reordered.removeAt(oldIndex);
+    reordered.insert(newIndex, category);
+
+    final previousOrder = List<Category>.of(_categories);
+    _categories
+      ..clear()
+      ..addAll(reordered);
+    notifyListeners();
+
+    try {
+      await CategoryRepository.updateOrder(reordered.map((category) => category.id).toList());
+    } catch (e) {
+      _categories
+        ..clear()
+        ..addAll(previousOrder);
+      notifyListeners();
+      AppErrors.showError('Failed to reorder categories.');
+    }
+  }
+
   Future<void> deleteCategory(int id) async {
     try {
       await CategoryRepository.delete(id);
