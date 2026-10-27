@@ -706,7 +706,7 @@ class _HomePageState extends State<HomePage> {
     final showLastModified = category?.showLastModified ?? _showLastModifiedSettings.value;
     writeLine("Title ${n.title}");
     return GestureDetector(
-      behavior: HitTestBehavior.translucent,
+      behavior: HitTestBehavior.opaque,
       onTap: () async {
         final query = _searchTextController.text.trim().isNotEmpty
             ? (_activeQuery ?? SearchQueryParser.parse(_searchTextController.text))
@@ -716,17 +716,18 @@ class _HomePageState extends State<HomePage> {
           MaterialPageRoute(
             builder: (c) => EditPage(
               noteId: n.id,
+              initialNote: n,
               highlightQuery: query,
             ),
           ),
         );
       },
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: showNoteDate ? 72 : 58),
+        constraints: const BoxConstraints(minHeight: 72),
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: showNoteDate ? 16 : 20,
-            vertical: showNoteDate ? 8 : 14,
+            vertical: showNoteDate ? 8 : 20,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,

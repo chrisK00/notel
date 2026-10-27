@@ -61,8 +61,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
   Future<void> _initAll() async {
-    await _loadAutoEditSetting();
-    await initNote();
+    await Future.wait([
+      _loadAutoEditSetting(),
+      initNote(),
+    ]);
     if (mounted) {
       _isDocEmpty = controller.document.toPlainText().trim().isEmpty;
       if (shouldAutoFocus) {

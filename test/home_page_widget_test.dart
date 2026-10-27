@@ -245,4 +245,51 @@ void main() {
     final itemSize = tester.getSize(sortItem);
     expect(itemSize.height, lessThanOrEqualTo(36.0));
   });
+
+  testWidgets('Note card has at least 72px min height when showNoteDate and showLastModified are both off', (tester) async {
+    int catId = 0;
+    await tester.runAsync(() async {
+      catId = await db.insert('Category', {
+        'name': 'Minimal',
+        'showNoteDate': 0,
+        'showLastModified': 0,
+      });
+      await db.insert('Note', {
+        'id': 20,
+        'title': 'Short Title',
+        'text': '',
+        'date': '2026-08-10',
+        'lastModified': '2026-08-28 12:00:00.000',
+        'categoryId': catId,
+      });
+    });
+
+    final notesProvider = NotesProvider();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<NotesProvider>.value(
+        value: notesProvider,
+        child: const MaterialApp(
+          home: HomePage(),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    await tester.runAsync(() async {
+      final category = (await CategoryRepository.getAll()).firstWhere((c) => c.name == 'Minimal');
+      await notesProvider.setSelectedCategory(category);
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final noteTitle = find.text('Short Title');
+    expect(noteTitle, findsOneWidget);
+
+    final rowFinder = find.ancestor(of: noteTitle, matching: find.byType(ConstrainedBox)).first;
+    final rowSize = tester.getSize(rowFinder);
+    expect(rowSize.height, greaterThanOrEqualTo(72.0));
+  });
 }

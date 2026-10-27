@@ -3,6 +3,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:notel/infrastructure/date_only.dart';
 import 'package:notel/infrastructure/db.dart';
+import 'package:notel/infrastructure/note.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/note_page/edit_page.dart';
 import 'package:notel/note_page/new_note_page.dart';
@@ -310,5 +311,38 @@ void main() {
 
     expect(controller.document.toPlainText(), '\n');
     expect(controller.selection.baseOffset, 0);
+  });
+
+  testWidgets('EditPage with initialNote displays title and content immediately on first pump', (tester) async {
+    final testNote = Note(
+      id: 1,
+      title: 'Existing Note',
+      displayText: r'[{"insert":"Line 1\nLine 2\n"}]',
+      date: DateOnly.today(),
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (_) => NotesProvider(),
+        child: MaterialApp(
+          home: EditPage(noteId: 1, initialNote: testNote),
+        ),
+      ),
+    );
+
+    // On the very first frame, title and editor content are already visible without awaiting db
+    expect(find.text('Existing Note'), findsOneWidget);
+    final quillFinder = find.byType(QuillEditor);
+    expect(quillFinder, findsOneWidget);
+    final quillWidget = tester.widget<QuillEditor>(quillFinder);
+    expect(quillWidget.configurations.controller.document.toPlainText(), contains('Line 1'));
+
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 50));
   });
 }
