@@ -138,9 +138,11 @@ class _AppState extends State<App> {
       onTap: (value) {
         switch (value) {
           case 0:
+            // UniqueKey forces a new HomePage State so search clears, list
+            // reloads, and scroll resets (same-type swap would reuse State).
             setState(() {
               Provider.of<NotesProvider>(context, listen: false).clearSelectedCategory();
-              currentPage = const HomePage();
+              currentPage = HomePage(key: UniqueKey());
               currentPageIndex = 0;
             });
             break;

@@ -26,7 +26,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     keepStyleOnNewLine: false,
   );
   final FocusNode _focusNode = FocusNode();
-  final ScrollController _editorScrollController = ScrollController();
+  // Shared with Quill (scrollable: false) so its caret-follow scrolls this view
+  // only when the caret would otherwise be off-screen.
+  final ScrollController _scrollController = ScrollController();
   Note note = Note(id: 0);
   var hasUnsavedChanges = false;
   String timeShortcut = "..";
@@ -148,7 +150,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     detachDocListener();
     controller.dispose();
     _focusNode.dispose();
-    _editorScrollController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -390,8 +392,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             if (showSearchNavigator && searchMatches.isNotEmpty) searchNavigatorBanner(),
             Expanded(
               child: CustomScrollView(
+                controller: _scrollController,
                 slivers: [
-                  // Title scrolls away with the note body
+                  // Title scrolls away with the note body.
+                  // Top content padding stripped — that gap was moved above back/save
+                  // so those buttons sit lower (thumb) without pushing the title down.
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -403,6 +408,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                           maxLines: null,
                           minLines: 1,
                           textAlign: TextAlign.center,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.fromLTRB(0, 0, 0, 8),
+                          ),
                         ),
                       ),
                     ),
@@ -411,7 +420,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                   SliverToBoxAdapter(
                     child: QuillEditor(
                       focusNode: _focusNode,
-                      scrollController: _editorScrollController,
+                      scrollController: _scrollController,
                       configurations: QuillEditorConfigurations(
                         autoFocus: shouldAutoFocus,
                         controller: controller,
@@ -454,17 +463,48 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     });
   }
 
+  // Dead space that used to sit between back/save and the title — relocated
+  // above the button row so those controls move down toward the hand / title
+  // while the title itself stays put.
+  static const double _backSaveDownShift = 12;
+
+  static final _backSaveIconStyle = IconButton.styleFrom(
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+    minimumSize: const Size(48, 40),
+  );
+
+  /// Date above title when the note is visible on home with dates enabled;
+  /// otherwise it lives in the ⋮ details menu (less distracting).
+  bool _showDateAboveTitle(NotesProvider notesProvider) {
+    if (note.hidden) return false;
+    final category = note.categoryId == null
+        ? null
+        : notesProvider.categories.where((c) => c.id == note.categoryId).firstOrNull;
+    return category?.showNoteDate ?? true;
+  }
+
   Widget actions(BuildContext context, NotesProvider notesProvider) {
+    final showDateAboveTitle = _showDateAboveTitle(notesProvider);
     return SafeArea(
       bottom: false,
       top: true,
       child: Padding(
         padding: const EdgeInsets.only(right: 5, left: 5),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // ⋮ stays tight at the top.
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               PopupMenuButton<int>(
                   offset: Offset.fromDirection(3, 10),
+                  padding: EdgeInsets.zero,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
+                    minimumSize: const Size(32, 28),
+                  ),
                   icon: const Icon(Icons.more_horiz),
                   onSelected: (selected) async {
                     switch (selected) {
@@ -492,8 +532,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       case 4:
                         if (note.categoryId == null) break;
                         await NotePageRepository.setHiddenFromHome(note.id, !note.hidden);
-                        note.hidden = !note.hidden;
-                        if (context.mounted) Navigator.pop(context);
+                        setState(() => note.hidden = !note.hidden);
+                        break;
+                      case 5:
+                        await updateDate(notesProvider);
                         break;
                       default:
                     }
@@ -507,6 +549,16 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               'Edited ${DateFormat('d MMM, HH:mm').format(note.lastModified!)}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ),
+                        if (!showDateAboveTitle)
+                          PopupMenuItem<int>(
+                            value: 5,
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Created ${DateFormat('d MMMM yyyy').format(note.date.toDateTime())}',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ),
@@ -524,10 +576,17 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             children: [Icon(Icons.folder_outlined), Text("category")],
                           ),
                         ),
-                        if (note.categoryId != null) PopupMenuItem<int>(
-                          value: 4,
-                          child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [Icon(note.hidden ? Icons.visibility : Icons.visibility_off), Text(note.hidden ? 'unhide from home' : 'hide from home')]),
-                        ),
+                        if (note.categoryId != null)
+                          PopupMenuItem<int>(
+                            value: 4,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                Icon(note.hidden ? Icons.visibility : Icons.visibility_off),
+                                Text(note.hidden ? 'unhide from home' : 'hide from home'),
+                              ],
+                            ),
+                          ),
                         const PopupMenuItem<int>(
                           value: 3,
                           child: Row(
@@ -537,21 +596,32 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         )
                       ])
             ]),
+            // Former gap-under-buttons, now above so the row moves downward.
+            const SizedBox(height: _backSaveDownShift),
             Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                      iconSize: 30,
-                      onPressed: () async => _handleBackNavigation(notesProvider),
-                      icon: const Icon(Icons.arrow_back)),
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                    iconSize: 30,
+                    style: _backSaveIconStyle,
+                    onPressed: () async => _handleBackNavigation(notesProvider),
+                    icon: const Icon(Icons.arrow_back)),
+                if (showDateAboveTitle)
                   TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
                       onPressed: () async => await updateDate(notesProvider),
                       child: Text(
                         DateFormat('d MMMM yyyy').format(note.date.toDateTime()),
-                      )),
-                  saveButton(notesProvider),
-                ],
-              ),
+                      ))
+                else
+                  const SizedBox.shrink(),
+                saveButton(notesProvider),
+              ],
+            ),
           ],
         ),
       ),
@@ -699,6 +769,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       opacity: hasUnsavedChanges ? 1 : 0,
       child: IconButton(
           iconSize: 30,
+          style: _backSaveIconStyle,
           onPressed: () async => _onSave(notesProvider),
           icon: Icon(Icons.save, color: Theme.of(context).colorScheme.primary)),
     );

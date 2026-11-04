@@ -32,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   final _scrollController = ScrollController();
   var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
   var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  var _shortMonthOnHomeSettings = BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
   Timer? _searchDebounce;
@@ -53,6 +54,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> loadSettings() async {
     final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
     final showModified = await _settingsRepository.getOrNull(BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
+    final shortMonth = await _settingsRepository.getOrNull(BoolSettings.shortMonthOnHomeKey, BoolSettings.fromMap);
     final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
     final titleSize =
         await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
@@ -60,6 +62,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       if (settings != null) _hideNoteTextSettings = settings;
       if (showModified != null) _showLastModifiedSettings = showModified;
+      if (shortMonth != null) _shortMonthOnHomeSettings = shortMonth;
       _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
       _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
     });
@@ -209,7 +212,6 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: 12),
               Expanded(
                 child: ListView.separated(
-                    key: const PageStorageKey('notesListKey'),
                     controller: _scrollController,
                     itemBuilder: (context, index) {
                       if (index == provider.notes.length) {
@@ -729,72 +731,92 @@ class _HomePageState extends State<HomePage> {
             horizontal: showNoteDate ? 16 : 20,
             vertical: showNoteDate ? 8 : 20,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (showNoteDate) ...[
-                SizedBox(
-                  width: 72,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (showNoteDate) ...[
+                  SizedBox(
+                    // Same width as before so titles keep their space; FittedBox
+                    // scales long month names down instead of wrapping or stealing width.
+                    width: 72,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          n.date.isToday() ? 'today' : '',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
+                        Text(
+                          n.date.day.toString(),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            DateFormat(_shortMonthOnHomeSettings.value ? 'MMM' : 'MMMM')
+                                .format(n.date.toDateTime()),
+                            style: const TextStyle(fontSize: 13),
+                            maxLines: 1,
+                            softWrap: false,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('yyyy').format(n.date.toDateTime()),
+                          style: const TextStyle(fontSize: 12),
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: showLastModified && n.lastModified != null
+                        ? MainAxisAlignment.spaceBetween
+                        : MainAxisAlignment.center,
                     children: [
-                      Text(
-                        n.date.isToday() ? 'today' : '',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        n.date.day.toString(),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                      ),
-                      Text(
-                        DateFormat('MMMM').format(n.date.toDateTime()),
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                      Text(
-                        DateFormat('yyyy').format(n.date.toDateTime()),
-                        style: const TextStyle(fontSize: 12),
-                      ),
+                      n.title.isNullOrWhitespace()
+                          ? _highlightedText(
+                              _hideNoteTextSettings.value ? '' : n.displayText,
+                              _activeQuery,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                              fontSize: _previewFontSize,
+                            )
+                          : Text(
+                              n.title!,
+                              style: TextStyle(
+                                fontSize: _previewTitleFontSize,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                      if (showLastModified && n.lastModified != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 5),
+                          child: Text(
+                            'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  fontSize: 12,
+                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.85),
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
               ],
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    n.title.isNullOrWhitespace()
-                        ? _highlightedText(
-                            _hideNoteTextSettings.value ? '' : n.displayText,
-                            _activeQuery,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 3,
-                            fontSize: _previewFontSize,
-                          )
-                        : Text(
-                            n.title!,
-                            style: TextStyle(
-                              fontSize: _previewTitleFontSize,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                    if (showLastModified && n.lastModified != null) ...[
-                      const SizedBox(height: 5),
-                      Text(
-                        'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontSize: 12,
-                              color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.85),
-                            ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

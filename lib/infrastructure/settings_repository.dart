@@ -10,6 +10,7 @@ class BoolSettings {
   static const autoBackupEnabledKey = "autoBackupEnabled";
   static const showLastModifiedKey = "showLastModified";
   static const autoEditExistingNotesKey = "autoEditExistingNotes";
+  static const shortMonthOnHomeKey = "shortMonthOnHome";
 
   factory BoolSettings.fromMap(Map<String, dynamic> map) => BoolSettings(
         map['id'],

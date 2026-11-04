@@ -25,6 +25,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
   var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
+  var _shortMonthOnHomeSettings = BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
   var _autoEditExistingNotesSettings = BoolSettings(BoolSettings.autoEditExistingNotesKey, false);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
@@ -59,6 +60,10 @@ class _SettingsPageState extends State<SettingsPage> {
       BoolSettings.autoEditExistingNotesKey,
       BoolSettings.fromMap,
     );
+    final shortMonth = await _settingsRepository.getOrNull(
+      BoolSettings.shortMonthOnHomeKey,
+      BoolSettings.fromMap,
+    );
     final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
     final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
     final autoDir = await _settingsRepository.getOrNull(
@@ -82,6 +87,7 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       if (hideSettings != null) _hideNoteSettings = hideSettings;
       if (showModified != null) _showLastModifiedSettings = showModified;
+      if (shortMonth != null) _shortMonthOnHomeSettings = shortMonth;
       if (autoEdit != null) _autoEditExistingNotesSettings = autoEdit;
       _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
       _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
@@ -93,8 +99,21 @@ class _SettingsPageState extends State<SettingsPage> {
     });
   }
 
+  Widget _sectionLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final autoBackupSubtitle = _autoBackupEnabled
+        ? (_autoBackupLastDate != null
+            ? 'On · last ${_formatLastBackupDate(_autoBackupLastDate!)}'
+            : 'On · every 7 days')
+        : 'Off';
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
@@ -118,191 +137,226 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-          // --- Manual Backup / Restore Section ---
-          const Text('Manual Backup & Restore', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.upload_file),
-                  title: const Text('Export Notes & Categories'),
-                  subtitle: const Text('Save an encrypted backup file (.bin) to share or keep'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: exportNotes,
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.download),
-                  title: const Text('Import Backup'),
-                  subtitle: const Text('Restore notes and categories from an encrypted backup file'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: importNotes,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // --- Automated Weekly Backup Section ---
-          const Text('Automated Backup (Weekly)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: const Icon(Icons.backup),
-                  title: const Text('Enable Weekly Auto-Backup'),
-                  subtitle: Text(_autoBackupEnabled
-                      ? (_autoBackupLastDate != null
-                          ? 'Last backup: ${_formatLastBackupDate(_autoBackupLastDate!)}'
-                          : 'Ready — backs up automatically every 7 days')
-                      : 'Disabled'),
-                  value: _autoBackupEnabled,
-                  onChanged: _toggleAutoBackup,
-                ),
-                if (_autoBackupEnabled) ...[
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.folder_open),
-                    title: const Text('Backup Folder'),
-                    subtitle: Text(
-                      _autoBackupDirectory.isEmpty ? 'No folder selected (required)' : _autoBackupDirectory,
-                      style: TextStyle(
-                        color: _autoBackupDirectory.isEmpty ? Colors.red : null,
-                      ),
-                    ),
-                    trailing: TextButton(
-                      onPressed: _pickAutoBackupFolder,
-                      child: Text(_autoBackupDirectory.isEmpty ? 'Select' : 'Change'),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline),
-                    title: const Text('Encryption Password'),
-                    subtitle: Text(
-                      _autoBackupPassword.isEmpty
-                          ? 'No password set (required)'
-                          : '•••••••• (${_autoBackupPassword.length} chars)',
-                      style: TextStyle(
-                        color: _autoBackupPassword.isEmpty ? Colors.red : null,
-                      ),
-                    ),
-                    trailing: TextButton(
-                      onPressed: _changeAutoBackupPassword,
-                      child: Text(_autoBackupPassword.isEmpty ? 'Set' : 'Change'),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.play_arrow, size: 18),
-                          label: const Text('Backup Now'),
-                          onPressed: (_autoBackupDirectory.isEmpty || _autoBackupPassword.isEmpty)
-                              ? null
-                              : _runManualAutoBackupNow,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // --- Cloud Sync Guide ---
-          const ExpansionTile(
-            leading: Icon(Icons.cloud_sync, color: Colors.deepPurple),
-            title: Text('How to sync with Google Drive / Cloud'),
-            childrenPadding: EdgeInsets.all(16),
-            children: [
-              Text(
-                '1. In Auto-Backup above, set your password and select a folder on your device (e.g. Documents/NotelBackups).\n\n'
-                '2. To sync with Google Drive / OneDrive / Nextcloud:\n'
-                '   • On PC: Choose a folder located inside your Google Drive or OneDrive sync directory.\n'
-                '   • On Android: Use the Google Drive app (or free sync apps like Autosync for Google Drive or Syncthing) to automatically sync your chosen folder.\n\n'
-                '3. Notel will silently create an encrypted backup (.enc) in that folder weekly. Your cloud service will upload it automatically in the background.',
-                style: TextStyle(fontSize: 13, height: 1.4),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // --- General App Settings ---
-          const Text('Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          // Everyday toggles first for fast access
+          _sectionLabel('Home'),
           Card(
             child: Column(
               children: [
                 SwitchListTile(
                   secondary: const Icon(Icons.visibility_off),
                   title: const Text('Hide Note Text Preview'),
-                  subtitle: const Text('Only show note titles and dates on the home screen'),
+                  subtitle: const Text('Only show titles and dates'),
                   value: _hideNoteSettings.value,
                   onChanged: toggleHideNoteText,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
                   secondary: const Icon(Icons.update),
-                  title: const Text('Show Last Edited Date'),
-                  subtitle: const Text('Display when each note was last changed'),
+                  title: const Text('Show Last Edited'),
+                  subtitle: const Text('When each note was last changed'),
                   value: _showLastModifiedSettings.value,
                   onChanged: toggleShowLastModified,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
-                  secondary: const Icon(Icons.edit_note),
-                  title: const Text('Auto-Edit Existing Notes'),
-                  subtitle: const Text('Immediately start editing when opening an existing note'),
-                  value: _autoEditExistingNotesSettings.value,
-                  onChanged: toggleAutoEditExistingNotes,
+                  secondary: const Icon(Icons.calendar_view_month),
+                  title: const Text('Short Month'),
+                  subtitle: Text(_shortMonthOnHomeSettings.value
+                      ? 'Nov instead of November'
+                      : 'Full month name (e.g. November)'),
+                  value: _shortMonthOnHomeSettings.value,
+                  onChanged: toggleShortMonthOnHome,
                 ),
-                ListTile(title: Text('Preview text size (${_previewFontSize.round()}px)'), subtitle: Slider(value: _previewFontSize, min: 12, max: 22, divisions: 10, onChanged: _setPreviewFontSize)),
-                ListTile(title: Text('Preview title size (${_previewTitleFontSize.round()}px)'), subtitle: Slider(value: _previewTitleFontSize, min: 14, max: 28, divisions: 14, onChanged: _setPreviewTitleFontSize)),
+                const Divider(height: 1),
+                ListTile(
+                  title: Text('Preview text (${_previewFontSize.round()}px)'),
+                  subtitle: Slider(
+                    value: _previewFontSize,
+                    min: 12,
+                    max: 22,
+                    divisions: 10,
+                    onChanged: _setPreviewFontSize,
+                  ),
+                ),
+                ListTile(
+                  title: Text('Preview title (${_previewTitleFontSize.round()}px)'),
+                  subtitle: Slider(
+                    value: _previewTitleFontSize,
+                    min: 14,
+                    max: 28,
+                    divisions: 14,
+                    onChanged: _setPreviewTitleFontSize,
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // --- Editor Shortcuts ---
-          const Text('Editor Shortcuts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          _sectionLabel('Editor'),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.access_time),
-              title: const Text('Insert Current Time'),
-              subtitle: Text(_timeShortcut.isEmpty
-                  ? 'Disabled (tap to configure)'
-                  : 'Type "$_timeShortcut" in note editor to insert timestamp'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _timeShortcut.isEmpty ? 'Off' : _timeShortcut,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.edit_note),
+                  title: const Text('Auto-Edit Existing Notes'),
+                  subtitle: const Text('Start editing as soon as a note opens'),
+                  value: _autoEditExistingNotesSettings.value,
+                  onChanged: toggleAutoEditExistingNotes,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: const Text('Insert Current Time'),
+                  subtitle: Text(_timeShortcut.isEmpty
+                      ? 'Disabled (tap to configure)'
+                      : 'Type "$_timeShortcut" to insert timestamp'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _timeShortcut.isEmpty ? 'Off' : _timeShortcut,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.edit_outlined, size: 18),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.edit_outlined, size: 18),
-                ],
-              ),
-              onTap: _editTimeShortcut,
+                  onTap: _editTimeShortcut,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Backup stays collapsed so Home/Editor stay one glance away
+          _sectionLabel('Backup'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                ExpansionTile(
+                  leading: const Icon(Icons.upload_file),
+                  title: const Text('Export & Import'),
+                  subtitle: const Text('Manual encrypted backup'),
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.upload_file),
+                      title: const Text('Export Notes & Categories'),
+                      subtitle: const Text('Save an encrypted .bin file'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: exportNotes,
+                    ),
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.download),
+                      title: const Text('Import Backup'),
+                      subtitle: const Text('Restore from an encrypted backup'),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: importNotes,
+                    ),
+                  ],
+                ),
+                const Divider(height: 1),
+                ExpansionTile(
+                  leading: const Icon(Icons.backup),
+                  title: const Text('Weekly Auto-Backup'),
+                  subtitle: Text(autoBackupSubtitle),
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    SwitchListTile(
+                      secondary: const Icon(Icons.backup),
+                      title: const Text('Enable Weekly Auto-Backup'),
+                      subtitle: Text(_autoBackupEnabled
+                          ? (_autoBackupLastDate != null
+                              ? 'Last backup: ${_formatLastBackupDate(_autoBackupLastDate!)}'
+                              : 'Ready — backs up automatically every 7 days')
+                          : 'Disabled'),
+                      value: _autoBackupEnabled,
+                      onChanged: _toggleAutoBackup,
+                    ),
+                    if (_autoBackupEnabled) ...[
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.folder_open),
+                        title: const Text('Backup Folder'),
+                        subtitle: Text(
+                          _autoBackupDirectory.isEmpty ? 'No folder selected (required)' : _autoBackupDirectory,
+                          style: TextStyle(
+                            color: _autoBackupDirectory.isEmpty ? Colors.red : null,
+                          ),
+                        ),
+                        trailing: TextButton(
+                          onPressed: _pickAutoBackupFolder,
+                          child: Text(_autoBackupDirectory.isEmpty ? 'Select' : 'Change'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.lock_outline),
+                        title: const Text('Encryption Password'),
+                        subtitle: Text(
+                          _autoBackupPassword.isEmpty
+                              ? 'No password set (required)'
+                              : '•••••••• (${_autoBackupPassword.length} chars)',
+                          style: TextStyle(
+                            color: _autoBackupPassword.isEmpty ? Colors.red : null,
+                          ),
+                        ),
+                        trailing: TextButton(
+                          onPressed: _changeAutoBackupPassword,
+                          child: Text(_autoBackupPassword.isEmpty ? 'Set' : 'Change'),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            FilledButton.tonalIcon(
+                              icon: const Icon(Icons.play_arrow, size: 18),
+                              label: const Text('Backup Now'),
+                              onPressed: (_autoBackupDirectory.isEmpty || _autoBackupPassword.isEmpty)
+                                  ? null
+                                  : _runManualAutoBackupNow,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const Divider(height: 1),
+                const ExpansionTile(
+                  leading: Icon(Icons.cloud_sync),
+                  title: Text('Cloud sync guide'),
+                  subtitle: Text('Google Drive / OneDrive / Nextcloud'),
+                  childrenPadding: EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      '1. In Weekly Auto-Backup, set your password and select a folder on your device (e.g. Documents/NotelBackups).\n\n'
+                      '2. To sync with Google Drive / OneDrive / Nextcloud:\n'
+                      '   • On PC: Choose a folder inside your Google Drive or OneDrive sync directory.\n'
+                      '   • On Android: Use the Google Drive app (or free sync apps like Autosync or Syncthing) to sync that folder.\n\n'
+                      '3. Notel creates an encrypted backup (.enc) weekly. Your cloud service uploads it in the background.',
+                      style: TextStyle(fontSize: 13, height: 1.4),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 30),
@@ -470,6 +524,14 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() => _showLastModifiedSettings.value = value);
     await _settingsRepository.insertOrUpdate(
       _showLastModifiedSettings.id, _showLastModifiedSettings.toMap,
+    );
+  }
+
+  Future<void> toggleShortMonthOnHome(bool value) async {
+    setState(() => _shortMonthOnHomeSettings.value = value);
+    await _settingsRepository.insertOrUpdate(
+      _shortMonthOnHomeSettings.id,
+      _shortMonthOnHomeSettings.toMap,
     );
   }
 
