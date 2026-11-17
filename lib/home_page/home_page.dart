@@ -918,8 +918,8 @@ class _HomePageState extends State<HomePage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        splashColor: onSurface.withValues(alpha: 0.04),
-        highlightColor: onSurface.withValues(alpha: 0.02),
+        splashColor: onSurface.withOpacity(0.04),
+        highlightColor: onSurface.withOpacity(0.02),
         onTap: () => _openNote(context, n),
         child: row,
       ),
