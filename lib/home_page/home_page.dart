@@ -41,6 +41,7 @@ class _HomePageState extends State<HomePage> {
   Timer? _searchDebounce;
   Timer? _noteLoadingTimer;
   int _searchRequestId = 0;
+  int _noteRippleGeneration = 0;
   bool _isOpeningNote = false;
   bool _showNoteLoading = false;
   bool _showExportReminder = false;
@@ -756,6 +757,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openNote(BuildContext context, Note preview) async {
     if (_isOpeningNote) return;
+    var notePageWasOpened = false;
     setState(() => _isOpeningNote = true);
     _noteLoadingTimer = Timer(const Duration(milliseconds: 200), () {
       if (mounted && _isOpeningNote) {
@@ -783,6 +785,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       );
+      notePageWasOpened = true;
     } catch (error) {
       writeLine('Failed to open note ${preview.id}: $error');
       if (context.mounted) {
@@ -797,6 +800,7 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           _isOpeningNote = false;
           _showNoteLoading = false;
+          if (notePageWasOpened) _noteRippleGeneration++;
         });
       }
     }
@@ -918,6 +922,7 @@ class _HomePageState extends State<HomePage> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        key: ValueKey('note-${n.id}-$_noteRippleGeneration'),
         splashColor: onSurface.withOpacity(0.04),
         highlightColor: onSurface.withOpacity(0.02),
         onTap: () => _openNote(context, n),

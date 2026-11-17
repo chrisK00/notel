@@ -4,6 +4,7 @@ import 'package:notel/home_page/home_page.dart';
 import 'package:notel/infrastructure/category_repository.dart';
 import 'package:notel/infrastructure/date_only.dart';
 import 'package:notel/infrastructure/db.dart';
+import 'package:notel/note_page/edit_page.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -123,6 +124,44 @@ void main() {
 
     // Verify last edited timestamp is shown for Note 1
     expect(find.textContaining('Last edited'), findsOneWidget);
+  });
+
+  testWidgets('note card ripple is reset after leaving the note', (tester) async {
+    final notesProvider = NotesProvider();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<NotesProvider>.value(
+        value: notesProvider,
+        child: const MaterialApp(
+          home: HomePage(),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    final noteText = find.text('Flutter Architecture');
+    final noteCard = find.ancestor(of: noteText, matching: find.byType(InkWell));
+    final initialInkWellKey = tester.widget<InkWell>(noteCard).key;
+
+    await tester.tap(noteText);
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+    expect(find.byType(EditPage), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    final returnedNoteCard =
+        find.ancestor(of: noteText, matching: find.byType(InkWell));
+    expect(tester.widget<InkWell>(returnedNoteCard).key, isNot(initialInkWellKey));
   });
 
   testWidgets('HomePage search bar filters notes with 300ms debounce', (tester) async {
