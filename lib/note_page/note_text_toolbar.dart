@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'notel_clipboard.dart';
+import 'section_divider.dart';
 
 class NoteTextToolbar extends StatelessWidget {
   const NoteTextToolbar({super.key, required QuillController controller})
@@ -116,6 +118,31 @@ class NoteTextToolbar extends StatelessWidget {
     );
   }
 
+  void _insertSectionDivider() {
+    final selection = _controller.selection;
+    if (!selection.isValid) return;
+
+    final plainText = _controller.document.toPlainText();
+    final start = selection.start;
+    final end = selection.end;
+    final insertion = Delta();
+
+    if (start > 0 && plainText[start - 1] != '\n') {
+      insertion.insert('\n');
+    }
+    insertion.insert({SectionDividerEmbedBuilder.type: ''});
+    if (end < plainText.length && plainText[end] != '\n') {
+      insertion.insert('\n');
+    }
+
+    _controller.replaceText(
+      start,
+      selection.end - selection.start,
+      insertion,
+      TextSelection.collapsed(offset: start + insertion.length.toInt()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -170,6 +197,11 @@ class NoteTextToolbar extends StatelessWidget {
                 icon: const Icon(Icons.title, size: 18),
                 tooltip: 'Text style',
                 onPressed: () => _showHeaderPicker(context),
+              ),
+              QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.horizontal_rule, size: 18),
+                tooltip: 'Insert divider',
+                onPressed: _insertSectionDivider,
               ),
               QuillToolbarCustomButtonOptions(
                 icon: const Icon(Icons.copy, size: 18),

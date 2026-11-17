@@ -13,6 +13,7 @@ import 'package:notel/infrastructure/note.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/main.dart';
 import 'package:notel/note_page/note_page_repository.dart';
+import 'package:notel/note_page/section_divider.dart';
 import 'package:notel/note_page/note_text_toolbar.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:notel/search/search_query.dart';
@@ -399,7 +400,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                   // so those buttons sit lower (thumb) without pushing the title down.
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      padding: const EdgeInsets.fromLTRB(25, 4, 25, 0),
                       child: Opacity(
                         opacity: 0.9,
                         child: TextField(
@@ -427,6 +428,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         padding: const EdgeInsets.only(left: 25, right: 25, top: 20, bottom: 20),
                         expands: false,
                         scrollable: false,
+                        embedBuilders: const [SectionDividerEmbedBuilder()],
                         onTapDown: (details, getPositionForOffset) {
                           _focusNode.canRequestFocus = true;
                           return false;
@@ -478,9 +480,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   /// otherwise it lives in the ⋮ details menu (less distracting).
   bool _showDateAboveTitle(NotesProvider notesProvider) {
     if (note.hidden) return false;
-    final category = note.categoryId == null
-        ? null
-        : notesProvider.categories.where((c) => c.id == note.categoryId).firstOrNull;
+    final category =
+        note.categoryId == null ? null : notesProvider.categories.where((c) => c.id == note.categoryId).firstOrNull;
     return category?.showNoteDate ?? true;
   }
 
