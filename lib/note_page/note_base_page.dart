@@ -20,6 +20,21 @@ import 'package:notel/search/search_query.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 
+class _FastCaretScrollController extends ScrollController {
+  @override
+  Future<void> animateTo(
+    double offset, {
+    required Duration duration,
+    required Curve curve,
+  }) {
+    return super.animateTo(
+      offset,
+      duration: const Duration(milliseconds: 50),
+      curve: Curves.easeOut,
+    );
+  }
+}
+
 abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   final controller = QuillController(
     document: Document(),
@@ -29,14 +44,15 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   final FocusNode _focusNode = FocusNode();
   // Shared with Quill (scrollable: false) so its caret-follow scrolls this view
   // only when the caret would otherwise be off-screen.
-  final ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = _FastCaretScrollController();
   Note note = Note(id: 0);
   var hasUnsavedChanges = false;
   String timeShortcut = "..";
   bool get isNewNote => false;
   bool _autoEditExistingNotes = false;
   bool _isDocEmpty = false;
-  bool get shouldAutoFocus => isNewNote || _isDocEmpty || _autoEditExistingNotes;
+  bool get shouldAutoFocus =>
+      isNewNote || _isDocEmpty || _autoEditExistingNotes;
   final TextEditingController textEditingController = TextEditingController();
   StreamSubscription<DocChange>? _docChangeSub;
 
@@ -112,15 +128,6 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   void handleBottomTap() {
     _focusNode.canRequestFocus = true;
-    if (controller.document.isEmpty()) {
-      controller.updateSelection(
-        const TextSelection.collapsed(offset: 0),
-        ChangeSource.local,
-      );
-      _focusNode.requestFocus();
-      return;
-    }
-
     final plainText = controller.document.toPlainText();
     if (plainText.trim().isEmpty) {
       controller.updateSelection(
@@ -128,20 +135,23 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
         ChangeSource.local,
       );
     } else if (plainText.endsWith('\n\n')) {
-      final targetPos = controller.document.length > 0 ? controller.document.length - 1 : 0;
       controller.updateSelection(
-        TextSelection.collapsed(offset: targetPos),
+        TextSelection.collapsed(offset: controller.document.length - 1),
         ChangeSource.local,
       );
     } else {
-      final insertPos = controller.document.length > 0 ? controller.document.length - 1 : 0;
-      controller.replaceText(
-        insertPos,
-        0,
-        '\n',
-        TextSelection.collapsed(offset: insertPos + 1),
-      );
-      setState(() => hasUnsavedChanges = true);
+      final insertPos = controller.document.length - 1;
+      detachDocListener();
+      try {
+        controller.replaceText(
+          insertPos,
+          0,
+          '\n',
+          TextSelection.collapsed(offset: insertPos + 1),
+        );
+      } finally {
+        attachDocListener();
+      }
     }
     _focusNode.requestFocus();
   }
@@ -165,8 +175,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     for (final group in query.textOrGroups) {
       terms.addAll(group.map((t) => t.trim()).where((t) => t.isNotEmpty));
     }
-    terms.addAll(query.titleTerms.map((t) => t.trim()).where((t) => t.isNotEmpty));
-    terms.addAll(query.startsWithTerms.map((t) => t.trim()).where((t) => t.isNotEmpty));
+    terms.addAll(
+        query.titleTerms.map((t) => t.trim()).where((t) => t.isNotEmpty));
+    terms.addAll(
+        query.startsWithTerms.map((t) => t.trim()).where((t) => t.isNotEmpty));
 
     if (terms.isEmpty) return;
 
@@ -210,7 +222,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     if (index < 0 || index >= searchMatches.length) return;
     final match = searchMatches[index];
     controller.updateSelection(
-      TextSelection(baseOffset: match.offset, extentOffset: match.offset + match.length),
+      TextSelection(
+          baseOffset: match.offset, extentOffset: match.offset + match.length),
       ChangeSource.local,
     );
   }
@@ -226,7 +239,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   void previousSearchMatch() {
     if (searchMatches.isEmpty) return;
     setState(() {
-      searchMatchIndex = (searchMatchIndex - 1 + searchMatches.length) % searchMatches.length;
+      searchMatchIndex =
+          (searchMatchIndex - 1 + searchMatches.length) % searchMatches.length;
     });
     _jumpToSearchMatch(searchMatchIndex);
   }
@@ -259,7 +273,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     clearSearchHighlights();
     final json = jsonEncode(controller.document.toDelta().toJson());
     try {
-      final changesMade = await NotePageRepository.updateNoteText(note.id, json);
+      final changesMade =
+          await NotePageRepository.updateNoteText(note.id, json);
 
       // Keep JSON on displayText so initNote() can decode it when re-entering the page.
       // The home list preview is built from the DB query, not this field.
@@ -267,7 +282,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       writeLine('Updated rows $changesMade');
 
       note.title = textEditingController.text;
-      final changesMadeForTitle = await NotePageRepository.updateNoteTitle(note.id, note.title);
+      final changesMadeForTitle =
+          await NotePageRepository.updateNoteTitle(note.id, note.title);
       writeLine('Updated titles $changesMadeForTitle');
       if (mounted) {
         setState(() => note.lastModified = DateTime.now());
@@ -297,7 +313,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     final start = baseOffset - timeShortcut.length;
     if (start < 0 || start + timeShortcut.length > plainText.length) return;
 
-    final typedSegment = plainText.substring(start, start + timeShortcut.length);
+    final typedSegment =
+        plainText.substring(start, start + timeShortcut.length);
     if (typedSegment != timeShortcut) return;
 
     final hour = DateTime.now().hour.toString().padLeft(2, '0');
@@ -329,7 +346,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
 // TODO move this to edit page?
   void setCaretToEnd() {
-    final pos = controller.document.length > 0 ? controller.document.length - 1 : 0;
+    final pos =
+        controller.document.length > 0 ? controller.document.length - 1 : 0;
     controller.updateSelection(
       TextSelection.collapsed(offset: pos),
       ChangeSource.local,
@@ -340,8 +358,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     if (hasUnsavedChanges) {
       final shouldSave = await showDialog<bool>(
           context: context,
-          builder: (context) =>
-              const YesOrNoDialog(title: "Save changes?", dangerBtnText: "ignore", successBtnText: "Save"));
+          builder: (context) => const YesOrNoDialog(
+              title: "Save changes?",
+              dangerBtnText: "ignore",
+              successBtnText: "Save"));
 
       if (shouldSave == true) {
         await _onSave(notesProvider);
@@ -390,14 +410,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             body: Column(
           children: [
             actions(context, provider),
-            if (showSearchNavigator && searchMatches.isNotEmpty) searchNavigatorBanner(),
+            if (showSearchNavigator && searchMatches.isNotEmpty)
+              searchNavigatorBanner(),
             Expanded(
               child: CustomScrollView(
                 controller: _scrollController,
                 slivers: [
-                  // Title scrolls away with the note body.
-                  // Top content padding stripped — that gap was moved above back/save
-                  // so those buttons sit lower (thumb) without pushing the title down.
+                  // Title scrolls away with the note body and follows the action row.
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(25, 4, 25, 0),
@@ -405,7 +424,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         opacity: 0.9,
                         child: TextField(
                           controller: textEditingController,
-                          onChanged: (_) => setState(() => hasUnsavedChanges = true),
+                          onChanged: (_) =>
+                              setState(() => hasUnsavedChanges = true),
                           maxLines: null,
                           minLines: 1,
                           textAlign: TextAlign.center,
@@ -425,7 +445,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       configurations: QuillEditorConfigurations(
                         autoFocus: shouldAutoFocus,
                         controller: controller,
-                        padding: const EdgeInsets.only(left: 25, right: 25, top: 20, bottom: 20),
+                        padding: const EdgeInsets.only(
+                            left: 25, right: 25, top: 20, bottom: 20),
                         expands: false,
                         scrollable: false,
                         embedBuilders: const [SectionDividerEmbedBuilder()],
@@ -465,10 +486,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     });
   }
 
-  // Dead space that used to sit between back/save and the title — relocated
-  // above the button row so those controls move down toward the hand / title
-  // while the title itself stays put.
-  static const double _backSaveDownShift = 12;
+  // Spacing before the button row moves the buttons and title below together.
+  static const double _backSaveDownShift = 15;
 
   static final _backSaveIconStyle = IconButton.styleFrom(
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -480,8 +499,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   /// otherwise it lives in the ⋮ details menu (less distracting).
   bool _showDateAboveTitle(NotesProvider notesProvider) {
     if (note.hidden) return false;
-    final category =
-        note.categoryId == null ? null : notesProvider.categories.where((c) => c.id == note.categoryId).firstOrNull;
+    final category = note.categoryId == null
+        ? null
+        : notesProvider.categories
+            .where((c) => c.id == note.categoryId)
+            .firstOrNull;
     return category?.showNoteDate ?? true;
   }
 
@@ -519,7 +541,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         final shouldCancel = await showDialog<bool>(
                             context: context,
                             builder: (context) => const YesOrNoDialog(
-                                title: "Delete Note?", dangerBtnText: "Delete", successBtnText: "Cancel"));
+                                title: "Delete Note?",
+                                dangerBtnText: "Delete",
+                                successBtnText: "Cancel"));
 
                         if (shouldCancel == null || shouldCancel) {
                           return;
@@ -532,7 +556,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         break;
                       case 4:
                         if (note.categoryId == null) break;
-                        await NotePageRepository.setHiddenFromHome(note.id, !note.hidden);
+                        await NotePageRepository.setHiddenFromHome(
+                            note.id, !note.hidden);
                         setState(() => note.hidden = !note.hidden);
                         break;
                       case 5:
@@ -541,7 +566,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       default:
                     }
                   },
-                  iconColor: Theme.of(context).colorScheme.secondary.withOpacity(0.7),
+                  iconColor:
+                      Theme.of(context).colorScheme.secondary.withOpacity(0.7),
                   itemBuilder: (context) => [
                         if (note.lastModified != null)
                           PopupMenuItem<int>(
@@ -574,7 +600,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                           value: 2,
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [Icon(Icons.folder_outlined), Text("category")],
+                            children: [
+                              Icon(Icons.folder_outlined),
+                              Text("category")
+                            ],
                           ),
                         ),
                         if (note.categoryId != null)
@@ -583,8 +612,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
-                                Icon(note.hidden ? Icons.visibility : Icons.visibility_off),
-                                Text(note.hidden ? 'unhide from home' : 'hide from home'),
+                                Icon(note.hidden
+                                    ? Icons.visibility
+                                    : Icons.visibility_off),
+                                Text(note.hidden
+                                    ? 'unhide from home'
+                                    : 'hide from home'),
                               ],
                             ),
                           ),
@@ -597,7 +630,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         )
                       ])
             ]),
-            // Former gap-under-buttons, now above so the row moves downward.
+            // Moves the buttons and title below together.
             const SizedBox(height: _backSaveDownShift),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -612,11 +645,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                       ),
                       onPressed: () async => await updateDate(notesProvider),
                       child: Text(
-                        DateFormat('d MMMM yyyy').format(note.date.toDateTime()),
+                        DateFormat('d MMMM yyyy')
+                            .format(note.date.toDateTime()),
                       ))
                 else
                   const SizedBox.shrink(),
@@ -665,9 +700,12 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                     ListTile(
                       leading: const Icon(Icons.close),
                       title: const Text('None'),
-                      trailing: note.categoryId == null ? const Icon(Icons.check, color: Colors.green) : null,
+                      trailing: note.categoryId == null
+                          ? const Icon(Icons.check, color: Colors.green)
+                          : null,
                       onTap: () async {
-                        await NotePageRepository.updateNoteCategory(note.id, null);
+                        await NotePageRepository.updateNoteCategory(
+                            note.id, null);
                         setState(() => note.categoryId = null);
                         await notesProvider.update(note.id);
                         if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -677,7 +715,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                     if (notesProvider.categories.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(8.0),
-                        child: Text('No categories created yet', style: TextStyle(color: Colors.grey)),
+                        child: Text('No categories created yet',
+                            style: TextStyle(color: Colors.grey)),
                       )
                     else
                       ConstrainedBox(
@@ -691,12 +730,16 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             return ListTile(
                               leading: const Icon(Icons.folder_outlined),
                               title: Text(category.name),
-                              trailing: isSelected ? const Icon(Icons.check, color: Colors.green) : null,
+                              trailing: isSelected
+                                  ? const Icon(Icons.check, color: Colors.green)
+                                  : null,
                               onTap: () async {
-                                await NotePageRepository.updateNoteCategory(note.id, category.id);
+                                await NotePageRepository.updateNoteCategory(
+                                    note.id, category.id);
                                 setState(() => note.categoryId = category.id);
                                 await notesProvider.update(note.id);
-                                if (dialogContext.mounted) Navigator.pop(dialogContext);
+                                if (dialogContext.mounted)
+                                  Navigator.pop(dialogContext);
                               },
                             );
                           },
@@ -725,7 +768,9 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                               hintText: 'Category name',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Name required' : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Name required'
+                                : null,
                           ),
                         ),
                         actions: [
@@ -736,8 +781,10 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                           FilledButton(
                             onPressed: () async {
                               if (formKey.currentState?.validate() ?? false) {
-                                final created = await notesProvider.createCategory(textController.text.trim());
-                                if (newCatCtx.mounted) Navigator.pop(newCatCtx, created);
+                                final created = await notesProvider
+                                    .createCategory(textController.text.trim());
+                                if (newCatCtx.mounted)
+                                  Navigator.pop(newCatCtx, created);
                               }
                             },
                             child: const Text('Create'),
@@ -746,7 +793,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       ),
                     );
                     if (newCategory != null) {
-                      await NotePageRepository.updateNoteCategory(note.id, newCategory.id);
+                      await NotePageRepository.updateNoteCategory(
+                          note.id, newCategory.id);
                       setState(() => note.categoryId = newCategory.id);
                       await notesProvider.update(note.id);
                       if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -782,7 +830,8 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: [
-          Icon(Icons.search, size: 18, color: Theme.of(context).colorScheme.primary),
+          Icon(Icons.search,
+              size: 18, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(

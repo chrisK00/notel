@@ -104,7 +104,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets('EditPage defaults to autofocus disabled for existing notes', (tester) async {
+  testWidgets('EditPage defaults to autofocus disabled for existing notes',
+      (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => NotesProvider(),
@@ -128,7 +129,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets('Tapping on text in EditPage focuses editor and places cursor', (tester) async {
+  testWidgets('Tapping on text in EditPage focuses editor and places cursor',
+      (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => NotesProvider(),
@@ -155,13 +157,15 @@ void main() {
     expect(quillWidget.focusNode.canRequestFocus, isTrue);
     expect(quillWidget.configurations.controller.selection.isValid, isTrue);
     expect(quillWidget.configurations.controller.selection.isCollapsed, isTrue);
-    expect(quillWidget.configurations.controller.selection.baseOffset, lessThan(7));
+    expect(quillWidget.configurations.controller.selection.baseOffset,
+        lessThan(7));
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets('EditPage with empty existing note enables autofocus', (tester) async {
+  testWidgets('EditPage with empty existing note enables autofocus',
+      (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => NotesProvider(),
@@ -184,7 +188,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets('EditPage enables autofocus when autoEditExistingNotes setting is true', (tester) async {
+  testWidgets(
+      'EditPage enables autofocus when autoEditExistingNotes setting is true',
+      (tester) async {
     await tester.runAsync(() async {
       await SettingsRepository(db).insertOrUpdate(
         BoolSettings.autoEditExistingNotesKey,
@@ -215,7 +221,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  testWidgets('Tapping bottom empty area inserts newline and focuses editor', (tester) async {
+  testWidgets(
+      'Tapping bottom empty area adds a blank line without marking note changed',
+      (tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => NotesProvider(),
@@ -231,7 +239,10 @@ void main() {
 
     // Tap bottom empty area below QuillEditor
     final bottomAreaFinder = find.byWidgetPredicate(
-      (widget) => widget is GestureDetector && widget.child is Container && (widget.child as Container).constraints?.minHeight == 120,
+      (widget) =>
+          widget is GestureDetector &&
+          widget.child is Container &&
+          (widget.child as Container).constraints?.minHeight == 120,
     );
     expect(bottomAreaFinder, findsOneWidget);
 
@@ -240,80 +251,50 @@ void main() {
 
     final quillFinder = find.byType(QuillEditor);
     final quillWidget = tester.widget<QuillEditor>(quillFinder);
-    expect(quillWidget.configurations.controller.document.toPlainText(), 'Line 1\nLine 2\n\n');
+    expect(quillWidget.configurations.controller.document.toPlainText(),
+        'Line 1\nLine 2\n\n');
+    expect(
+      quillWidget.configurations.controller.selection.baseOffset,
+      quillWidget.configurations.controller.document.length - 1,
+    );
     expect(quillWidget.focusNode.hasFocus, isTrue);
+    final saveButtonOpacity = tester.widget<Opacity>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.save),
+            matching: find.byType(Opacity),
+          )
+          .first,
+    );
+    expect(saveButtonOpacity.opacity, 0);
+
+    final controller = quillWidget.configurations.controller;
+    final insertPos = controller.selection.baseOffset;
+    controller.replaceText(
+      insertPos,
+      0,
+      'New text',
+      TextSelection.collapsed(offset: insertPos + 'New text'.length),
+    );
+    await tester.pump();
+
+    final changedSaveButtonOpacity = tester.widget<Opacity>(
+      find
+          .ancestor(
+            of: find.byIcon(Icons.save),
+            matching: find.byType(Opacity),
+          )
+          .first,
+    );
+    expect(changedSaveButtonOpacity.opacity, 1);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 50));
   });
 
-  test('Bottom-tap inserts newline when document does not end with blank line', () {
-    final doc = Document.fromJson([
-      {'insert': 'First line\nSecond line\n'}
-    ]);
-    final controller = QuillController(
-      document: doc,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-
-    final plainText = controller.document.toPlainText();
-    expect(plainText.endsWith('\n\n'), isFalse);
-
-    // Bottom-tap logic
-    final insertPos = controller.document.length > 0 ? controller.document.length - 1 : 0;
-    controller.replaceText(
-      insertPos,
-      0,
-      '\n',
-      TextSelection.collapsed(offset: insertPos + 1),
-    );
-
-    expect(controller.document.toPlainText(), 'First line\nSecond line\n\n');
-    expect(controller.selection.baseOffset, controller.document.length - 1);
-  });
-
-  test('Bottom-tap moves to existing empty line when already ending in newline', () {
-    final doc = Document.fromJson([
-      {'insert': 'First line\n\n'}
-    ]);
-    final controller = QuillController(
-      document: doc,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-
-    final plainText = controller.document.toPlainText();
-    expect(plainText.endsWith('\n\n'), isTrue);
-
-    // Bottom-tap logic: do not insert extra newline
-    controller.updateSelection(
-      TextSelection.collapsed(offset: controller.document.length - 1),
-      ChangeSource.local,
-    );
-
-    expect(controller.document.toPlainText(), 'First line\n\n');
-    expect(controller.selection.baseOffset, controller.document.length - 1);
-  });
-
-  test('Bottom-tap on empty document moves cursor to position 0', () {
-    final doc = Document();
-    final controller = QuillController(
-      document: doc,
-      selection: const TextSelection.collapsed(offset: 0),
-    );
-
-    final plainText = controller.document.toPlainText();
-    expect(plainText.trim().isEmpty, isTrue);
-
-    controller.updateSelection(
-      const TextSelection.collapsed(offset: 0),
-      ChangeSource.local,
-    );
-
-    expect(controller.document.toPlainText(), '\n');
-    expect(controller.selection.baseOffset, 0);
-  });
-
-  testWidgets('EditPage with initialNote displays title and content immediately on first pump', (tester) async {
+  testWidgets(
+      'EditPage with initialNote displays title and content immediately on first pump',
+      (tester) async {
     final testNote = Note(
       id: 1,
       title: 'Existing Note',
@@ -335,7 +316,8 @@ void main() {
     final quillFinder = find.byType(QuillEditor);
     expect(quillFinder, findsOneWidget);
     final quillWidget = tester.widget<QuillEditor>(quillFinder);
-    expect(quillWidget.configurations.controller.document.toPlainText(), contains('Line 1'));
+    expect(quillWidget.configurations.controller.document.toPlainText(),
+        contains('Line 1'));
 
     await tester.runAsync(() async {
       await Future.delayed(const Duration(milliseconds: 150));

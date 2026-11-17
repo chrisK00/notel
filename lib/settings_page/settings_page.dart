@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'user_guide_page.dart';
 import 'settings_page_repository.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -137,8 +138,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
 
-          // Everyday toggles first for fast access
-          _sectionLabel('Home'),
+          _sectionLabel('Home screen'),
           Card(
             child: Column(
               children: [
@@ -167,7 +167,15 @@ class _SettingsPageState extends State<SettingsPage> {
                   value: _shortMonthOnHomeSettings.value,
                   onChanged: toggleShortMonthOnHome,
                 ),
-                const Divider(height: 1),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _sectionLabel('Text appearance'),
+          Card(
+            child: Column(
+              children: [
                 ListTile(
                   title: Text('Preview text (${_previewFontSize.round()}px)'),
                   subtitle: Slider(
@@ -359,7 +367,25 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 16),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.menu_book_outlined),
+              title: const Text('Användarguide'),
+              subtitle: const Text(
+                  'Kom igång med anteckningar, kategorier och säkerhetskopior'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => const UserGuidePage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );

@@ -5,8 +5,7 @@ import 'notel_clipboard.dart';
 import 'section_divider.dart';
 
 class NoteTextToolbar extends StatelessWidget {
-  const NoteTextToolbar({super.key, required QuillController controller})
-      : _controller = controller;
+  const NoteTextToolbar({super.key, required QuillController controller}) : _controller = controller;
 
   final QuillController _controller;
 
@@ -183,7 +182,7 @@ class NoteTextToolbar extends StatelessWidget {
             showSuperscript: false,
             showClearFormat: false,
             showIndent: false,
-            showLink: false,
+            showLink: true,
             showClipboardCopy: false,
             showClipboardCut: false,
             showClipboardPaste: false,

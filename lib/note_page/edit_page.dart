@@ -47,6 +47,8 @@ class _EditPageState extends NoteBasePage<EditPage> {
 
   @override
   Future initNote() async {
+    if (widget.initialNote != null) return;
+
     final fetched = await NotePageRepository.getNoteById(widget.noteId);
     if (!mounted) return;
     note = fetched;

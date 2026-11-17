@@ -8,6 +8,7 @@ import 'package:notel/infrastructure/auto_backup_service.dart';
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/note_page/new_note_page.dart';
+import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/search/search_query.dart';
 import 'package:notel/search/search_query_parser.dart';
 import 'package:notel/utils/extensions.dart';
@@ -31,12 +32,17 @@ class _HomePageState extends State<HomePage> {
   final _settingsRepository = SettingsRepository(Db.instance);
   final _scrollController = ScrollController();
   var _hideNoteTextSettings = BoolSettings(BoolSettings.hideNoteTextKey, true);
-  var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
-  var _shortMonthOnHomeSettings = BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
+  var _showLastModifiedSettings =
+      BoolSettings(BoolSettings.showLastModifiedKey, true);
+  var _shortMonthOnHomeSettings =
+      BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
   Timer? _searchDebounce;
+  Timer? _noteLoadingTimer;
   int _searchRequestId = 0;
+  bool _isOpeningNote = false;
+  bool _showNoteLoading = false;
   bool _showExportReminder = false;
   SearchQuery? _activeQuery;
   int? _editingCategoryId;
@@ -46,18 +52,24 @@ class _HomePageState extends State<HomePage> {
     await provider.loadCategories();
     final loadedNotes = await HomePageRepository.loadNotes(
         categoryId: provider.selectedCategory?.id,
-        sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+        sort: provider.selectedCategory == null
+            ? NoteSort.created
+            : provider.sort);
     if (!mounted) return;
     provider.init(loadedNotes);
   }
 
   Future<void> loadSettings() async {
-    final settings = await _settingsRepository.getOrNull(BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
-    final showModified = await _settingsRepository.getOrNull(BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
-    final shortMonth = await _settingsRepository.getOrNull(BoolSettings.shortMonthOnHomeKey, BoolSettings.fromMap);
-    final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
-    final titleSize =
-        await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    final settings = await _settingsRepository.getOrNull(
+        BoolSettings.hideNoteTextKey, BoolSettings.fromMap);
+    final showModified = await _settingsRepository.getOrNull(
+        BoolSettings.showLastModifiedKey, BoolSettings.fromMap);
+    final shortMonth = await _settingsRepository.getOrNull(
+        BoolSettings.shortMonthOnHomeKey, BoolSettings.fromMap);
+    final previewSize = await _settingsRepository.getOrNull(
+        StringSettings.previewFontSizeKey, StringSettings.fromMap);
+    final titleSize = await _settingsRepository.getOrNull(
+        StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
     if (!mounted) return;
     setState(() {
       if (settings != null) _hideNoteTextSettings = settings;
@@ -99,7 +111,8 @@ class _HomePageState extends State<HomePage> {
       }
     }
 
-    final reminder = await _settingsRepository.getOrNull(StringSettings.lastExportReminderKey, StringSettings.fromMap);
+    final reminder = await _settingsRepository.getOrNull(
+        StringSettings.lastExportReminderKey, StringSettings.fromMap);
     if (!mounted) return;
     final bool shouldShow;
     if (reminder == null) {
@@ -107,7 +120,8 @@ class _HomePageState extends State<HomePage> {
       shouldShow = true;
     } else {
       final lastDate = DateTime.tryParse(reminder.value);
-      shouldShow = lastDate == null || DateTime.now().difference(lastDate).inDays >= 30;
+      shouldShow =
+          lastDate == null || DateTime.now().difference(lastDate).inDays >= 30;
     }
     if (shouldShow) setState(() => _showExportReminder = true);
   }
@@ -116,7 +130,9 @@ class _HomePageState extends State<HomePage> {
     // Snooze: record today so the reminder won't show again for 30 days.
     await _settingsRepository.insertOrUpdate(
       StringSettings.lastExportReminderKey,
-      StringSettings(StringSettings.lastExportReminderKey, DateTime.now().toString()).toMap,
+      StringSettings(
+              StringSettings.lastExportReminderKey, DateTime.now().toString())
+          .toMap,
     );
     setState(() => _showExportReminder = false);
   }
@@ -124,7 +140,8 @@ class _HomePageState extends State<HomePage> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
-    if (position.maxScrollExtent > 0 && position.pixels >= position.maxScrollExtent - 200) {
+    if (position.maxScrollExtent > 0 &&
+        position.pixels >= position.maxScrollExtent - 200) {
       final provider = Provider.of<NotesProvider>(context, listen: false);
       if (!provider.isLoadingMore && provider.hasMore) {
         provider.loadNextPage();
@@ -145,6 +162,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _noteLoadingTimer?.cancel();
     _searchTextController.dispose();
     _searchFocusNode.dispose();
     _categoryTitleController.dispose();
@@ -169,7 +187,8 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _saveCategoryTitle(NotesProvider provider, String newName) async {
+  Future<void> _saveCategoryTitle(
+      NotesProvider provider, String newName) async {
     final category = provider.selectedCategory;
     if (category == null) return;
     final trimmed = newName.trim();
@@ -188,49 +207,64 @@ class _HomePageState extends State<HomePage> {
       _syncCategoryTitle(provider);
       return Scaffold(
         drawer: const CategoryDrawer(),
-        body: SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Column(children: [
-              if (_showExportReminder)
-                MaterialBanner(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  content: const Text('No export in over 30 days. Consider backing up your notes.'),
-                  actions: [
-                    TextButton(
-                      onPressed: _dismissExportReminder,
-                      child: const Text('Dismiss'),
+        body: Stack(
+          children: [
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Column(children: [
+                  if (_showExportReminder)
+                    MaterialBanner(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      content: const Text(
+                          'No export in over 30 days. Consider backing up your notes.'),
+                      actions: [
+                        TextButton(
+                          onPressed: _dismissExportReminder,
+                          child: const Text('Dismiss'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              if (provider.selectedCategory != null) categoryHeader(provider),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: searchBar(provider),
+                  if (provider.selectedCategory != null)
+                    categoryHeader(provider),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: searchBar(provider),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                        controller: _scrollController,
+                        itemBuilder: (context, index) {
+                          if (index == provider.notes.length) {
+                            return provider.isLoadingMore
+                                ? const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  )
+                                : const SizedBox.shrink();
+                          }
+                          return noteRow(context, provider.notes[index]);
+                        },
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemCount: provider.notes.length + 1),
+                  ),
+                ]),
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: ListView.separated(
-                    controller: _scrollController,
-                    itemBuilder: (context, index) {
-                      if (index == provider.notes.length) {
-                        return provider.isLoadingMore
-                            ? const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(child: CircularProgressIndicator()),
-                              )
-                            : const SizedBox.shrink();
-                      }
-                      return noteRow(context, provider.notes[index]);
-                    },
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemCount: provider.notes.length + 1),
-              ),
-            ]),
-          ),
+            ),
+            if (_showNoteLoading) ...[
+              const ModalBarrier(dismissible: false, color: Colors.black26),
+              const Center(child: CircularProgressIndicator()),
+            ],
+          ],
         ),
-        floatingActionButton: addNoteButton(context, provider),
+        floatingActionButton: IgnorePointer(
+          ignoring: _isOpeningNote,
+          child: addNoteButton(context, provider),
+        ),
       );
     });
   }
@@ -331,7 +365,9 @@ class _HomePageState extends State<HomePage> {
               if (item == 7 || item == 8 || item == 9 || item == 10) {
                 await provider.updateCategoryDisplaySettings(
                   category.id,
-                  showNoteDate: item == 7 ? !category.showNoteDate : category.showNoteDate,
+                  showNoteDate: item == 7
+                      ? !category.showNoteDate
+                      : category.showNoteDate,
                   showLastModified: switch (item) {
                     8 => null,
                     9 => true,
@@ -351,7 +387,8 @@ class _HomePageState extends State<HomePage> {
                 final shouldCancel = await showDialog<bool>(
                   context: context,
                   builder: (context) => YesOrNoDialog(
-                    title: "Delete category '${categoryToDelete.name}' and all its notes?",
+                    title:
+                        "Delete category '${categoryToDelete.name}' and all its notes?",
                     dangerBtnText: "Delete",
                     successBtnText: "Cancel",
                   ),
@@ -479,8 +516,10 @@ class _HomePageState extends State<HomePage> {
     final start = selection.start >= 0 ? selection.start : text.length;
     final end = selection.end >= 0 ? selection.end : text.length;
 
-    final prefix = (start > 0 && !text.substring(0, start).endsWith(' ')) ? ' ' : '';
-    final suffix = (end < text.length && !text.substring(end).startsWith(' ')) ? ' ' : '';
+    final prefix =
+        (start > 0 && !text.substring(0, start).endsWith(' ')) ? ' ' : '';
+    final suffix =
+        (end < text.length && !text.substring(end).startsWith(' ')) ? ' ' : '';
     final insertion = '$prefix$template$suffix';
 
     final newText = text.replaceRange(start, end, insertion);
@@ -510,7 +549,10 @@ class _HomePageState extends State<HomePage> {
               children: [
                 Text(
                   'Search Filter Assistant',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -522,7 +564,8 @@ class _HomePageState extends State<HomePage> {
                   icon: Icons.all_inclusive,
                   template: 'contains:a && contains:b',
                   title: 'contains:x && contains:y',
-                  description: 'Match notes containing all specified terms (AND)',
+                  description:
+                      'Match notes containing all specified terms (AND)',
                   onTap: () {
                     Navigator.pop(ctx);
                     _insertSearchTemplate('contains:a && contains:b', provider);
@@ -555,7 +598,8 @@ class _HomePageState extends State<HomePage> {
                   description: 'Filter notes in a date range',
                   onTap: () {
                     Navigator.pop(ctx);
-                    _insertSearchTemplate('date:2025-01-01..2025-06-30', provider);
+                    _insertSearchTemplate(
+                        'date:2025-01-01..2025-06-30', provider);
                   },
                 ),
                 _filterAssistantItem(
@@ -595,7 +639,8 @@ class _HomePageState extends State<HomePage> {
                   description: 'Note body starts with either text prefix (OR)',
                   onTap: () {
                     Navigator.pop(ctx);
-                    _insertSearchTemplate('startswith:alpha || startswith:beta', provider);
+                    _insertSearchTemplate(
+                        'startswith:alpha || startswith:beta', provider);
                   },
                 ),
                 _filterAssistantItem(
@@ -649,11 +694,13 @@ class _HomePageState extends State<HomePage> {
       leading: CircleAvatar(
         radius: 16,
         backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        child: Icon(icon, size: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
+        child: Icon(icon,
+            size: 18, color: Theme.of(context).colorScheme.onPrimaryContainer),
       ),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'monospace', fontSize: 13),
+        style: const TextStyle(
+            fontWeight: FontWeight.bold, fontFamily: 'monospace', fontSize: 13),
       ),
       subtitle: Text(description, style: const TextStyle(fontSize: 12)),
       trailing: const Icon(Icons.add, size: 18),
@@ -666,7 +713,9 @@ class _HomePageState extends State<HomePage> {
     final requestId = ++_searchRequestId;
     final loadedNotes = await HomePageRepository.loadNotes(
         categoryId: provider.selectedCategory?.id,
-        sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
+        sort: provider.selectedCategory == null
+            ? NoteSort.created
+            : provider.sort);
     if (requestId != _searchRequestId) return;
     provider.init(loadedNotes);
     setState(() {
@@ -688,8 +737,11 @@ class _HomePageState extends State<HomePage> {
       final query = SearchQueryParser.parse(trimmedValue);
       final foundNotes = await HomePageRepository.findNotes(query,
           categoryId: provider.selectedCategory?.id,
-          sort: provider.selectedCategory == null ? NoteSort.created : provider.sort);
-      if (requestId != _searchRequestId || _searchTextController.text.trim() != trimmedValue) return;
+          sort: provider.selectedCategory == null
+              ? NoteSort.created
+              : provider.sort);
+      if (requestId != _searchRequestId ||
+          _searchTextController.text.trim() != trimmedValue) return;
       if (mounted) setState(() => _activeQuery = query);
       provider.init(foundNotes);
     });
@@ -702,123 +754,174 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  GestureDetector noteRow(BuildContext context, Note n) {
-    final category = Provider.of<NotesProvider>(context, listen: false).selectedCategory;
-    final showNoteDate = category?.showNoteDate ?? true;
-    final showLastModified = category?.showLastModified ?? _showLastModifiedSettings.value;
-    writeLine("Title ${n.title}");
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () async {
-        final query = _searchTextController.text.trim().isNotEmpty
-            ? (_activeQuery ?? SearchQueryParser.parse(_searchTextController.text))
-            : null;
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (c) => EditPage(
-              noteId: n.id,
-              initialNote: n,
-              highlightQuery: query,
-            ),
+  Future<void> _openNote(BuildContext context, Note preview) async {
+    if (_isOpeningNote) return;
+    setState(() => _isOpeningNote = true);
+    _noteLoadingTimer = Timer(const Duration(milliseconds: 200), () {
+      if (mounted && _isOpeningNote) {
+        setState(() => _showNoteLoading = true);
+      }
+    });
+
+    try {
+      final fullNote = await NotePageRepository.getNoteById(preview.id);
+      _noteLoadingTimer?.cancel();
+      if (!mounted || !context.mounted) return;
+      setState(() => _showNoteLoading = false);
+
+      final query = _searchTextController.text.trim().isNotEmpty
+          ? (_activeQuery ??
+              SearchQueryParser.parse(_searchTextController.text))
+          : null;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (c) => EditPage(
+            noteId: fullNote.id,
+            initialNote: fullNote,
+            highlightQuery: query,
           ),
+        ),
+      );
+    } catch (error) {
+      writeLine('Failed to open note ${preview.id}: $error');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Could not open note. Please try again.')),
         );
-      },
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 72),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: showNoteDate ? 16 : 20,
-            vertical: showNoteDate ? 8 : 20,
-          ),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (showNoteDate) ...[
-                  SizedBox(
-                    // Same width as before so titles keep their space; FittedBox
-                    // scales long month names down instead of wrapping or stealing width.
-                    width: 72,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          n.date.isToday() ? 'today' : '',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          softWrap: false,
-                        ),
-                        Text(
-                          n.date.day.toString(),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-                          maxLines: 1,
-                          softWrap: false,
-                        ),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            DateFormat(_shortMonthOnHomeSettings.value ? 'MMM' : 'MMMM')
-                                .format(n.date.toDateTime()),
-                            style: const TextStyle(fontSize: 13),
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('yyyy').format(n.date.toDateTime()),
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 1,
-                          softWrap: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Expanded(
+      }
+    } finally {
+      _noteLoadingTimer?.cancel();
+      if (mounted) {
+        setState(() {
+          _isOpeningNote = false;
+          _showNoteLoading = false;
+        });
+      }
+    }
+  }
+
+  Widget noteRow(BuildContext context, Note n) {
+    final category =
+        Provider.of<NotesProvider>(context, listen: false).selectedCategory;
+    final showNoteDate = category?.showNoteDate ?? true;
+    final showLastModified =
+        category?.showLastModified ?? _showLastModifiedSettings.value;
+    writeLine("Title ${n.title}");
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 72),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: showNoteDate ? 16 : 20,
+          vertical: showNoteDate ? 8 : 20,
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (showNoteDate) ...[
+                SizedBox(
+                  // Same width as before so titles keep their space; FittedBox
+                  // scales long month names down instead of wrapping or stealing width.
+                  width: 72,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: showLastModified && n.lastModified != null
-                        ? MainAxisAlignment.spaceBetween
-                        : MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      n.title.isNullOrWhitespace()
-                          ? _highlightedText(
-                              _hideNoteTextSettings.value ? '' : n.displayText,
-                              _activeQuery,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 2,
-                              fontSize: _previewFontSize,
-                            )
-                          : Text(
-                              n.title!,
-                              style: TextStyle(
-                                fontSize: _previewTitleFontSize,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                      if (showLastModified && n.lastModified != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 5),
-                          child: Text(
-                            'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontSize: 12,
-                                  color: Theme.of(context).textTheme.bodySmall?.color?.withOpacity(.85),
-                                ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      Text(
+                        n.date.isToday() ? 'today' : '',
+                        style: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                      Text(
+                        n.date.day.toString(),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 20),
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          DateFormat(_shortMonthOnHomeSettings.value
+                                  ? 'MMM'
+                                  : 'MMMM')
+                              .format(n.date.toDateTime()),
+                          style: const TextStyle(fontSize: 13),
+                          maxLines: 1,
+                          softWrap: false,
                         ),
+                      ),
+                      Text(
+                        DateFormat('yyyy').format(n.date.toDateTime()),
+                        style: const TextStyle(fontSize: 12),
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 12),
               ],
-            ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: showLastModified && n.lastModified != null
+                      ? MainAxisAlignment.spaceBetween
+                      : MainAxisAlignment.center,
+                  children: [
+                    n.title.isNullOrWhitespace()
+                        ? _highlightedText(
+                            _hideNoteTextSettings.value ? '' : n.displayText,
+                            _activeQuery,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                            fontSize: _previewFontSize,
+                          )
+                        : Text(
+                            n.title!,
+                            style: TextStyle(
+                              fontSize: _previewTitleFontSize,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                    if (showLastModified && n.lastModified != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 5),
+                        child: Text(
+                          'Last edited ${DateFormat('d MMM yyyy, HH:mm').format(n.lastModified!)}',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: 12,
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color
+                                        ?.withOpacity(.85),
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        splashColor: onSurface.withValues(alpha: 0.04),
+        highlightColor: onSurface.withValues(alpha: 0.02),
+        onTap: () => _openNote(context, n),
+        child: row,
       ),
     );
   }
@@ -843,7 +946,10 @@ class _HomePageState extends State<HomePage> {
     }
 
     if (terms.isEmpty || text.isEmpty) {
-      return Text(text, overflow: overflow, maxLines: maxLines, style: TextStyle(fontSize: fontSize));
+      return Text(text,
+          overflow: overflow,
+          maxLines: maxLines,
+          style: TextStyle(fontSize: fontSize));
     }
 
     // Build a combined regex that matches any of the terms (case-insensitive).
@@ -872,7 +978,9 @@ class _HomePageState extends State<HomePage> {
 
     return Text.rich(
       TextSpan(
-        style: TextStyle(fontSize: _previewFontSize, color: Theme.of(context).textTheme.bodyMedium?.color),
+        style: TextStyle(
+            fontSize: _previewFontSize,
+            color: Theme.of(context).textTheme.bodyMedium?.color),
         children: spans,
       ),
       overflow: overflow,
@@ -880,13 +988,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  FloatingActionButton addNoteButton(BuildContext context, NotesProvider provider) {
+  FloatingActionButton addNoteButton(
+      BuildContext context, NotesProvider provider) {
     return FloatingActionButton(
       onPressed: () async {
         await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (c) => NewNotePage(categoryId: provider.selectedCategory?.id),
+            builder: (c) =>
+                NewNotePage(categoryId: provider.selectedCategory?.id),
           ),
         );
       },
