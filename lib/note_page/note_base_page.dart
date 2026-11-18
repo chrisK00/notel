@@ -473,7 +473,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   }
 
   // Spacing before the button row moves the buttons and title below together.
-  static const double _backSaveDownShift = 15;
+  static const double _backSaveDownShift = 18;
 
   static final _backSaveIconStyle = IconButton.styleFrom(
     tapTargetSize: MaterialTapTargetSize.shrinkWrap,

@@ -144,7 +144,11 @@ void main() {
 
     final noteText = find.text('Flutter Architecture');
     final noteCard = find.ancestor(of: noteText, matching: find.byType(InkWell));
-    final initialInkWellKey = tester.widget<InkWell>(noteCard).key;
+    final initialInkWell = tester.widget<InkWell>(noteCard);
+    final initialInkWellKey = initialInkWell.key;
+    final onSurface = Theme.of(tester.element(noteCard)).colorScheme.onSurface;
+    expect(initialInkWell.splashColor, onSurface.withValues(alpha: 0.08));
+    expect(initialInkWell.highlightColor, onSurface.withValues(alpha: 0.04));
 
     await tester.tap(noteText);
     await tester.runAsync(() async {
@@ -285,7 +289,7 @@ void main() {
     expect(itemSize.height, lessThanOrEqualTo(36.0));
   });
 
-  testWidgets('Note card has at least 72px min height when showNoteDate and showLastModified are both off', (tester) async {
+  testWidgets('Note card grows by at most 5px when category hides the date', (tester) async {
     int catId = 0;
     await tester.runAsync(() async {
       catId = await db.insert('Category', {
@@ -329,6 +333,7 @@ void main() {
 
     final rowFinder = find.ancestor(of: noteTitle, matching: find.byType(ConstrainedBox)).first;
     final rowSize = tester.getSize(rowFinder);
-    expect(rowSize.height, greaterThanOrEqualTo(72.0));
+    expect(rowSize.height, greaterThanOrEqualTo(77.0));
+    expect(rowSize.height, lessThanOrEqualTo(77.0));
   });
 }

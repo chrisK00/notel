@@ -810,11 +810,13 @@ class _HomePageState extends State<HomePage> {
     final category =
         Provider.of<NotesProvider>(context, listen: false).selectedCategory;
     final showNoteDate = category?.showNoteDate ?? true;
+    final categoryWithoutNoteDate = category != null && !showNoteDate;
     final showLastModified =
         category?.showLastModified ?? _showLastModifiedSettings.value;
     writeLine("Title ${n.title}");
     final row = ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 72),
+      constraints:
+          BoxConstraints(minHeight: categoryWithoutNoteDate ? 77 : 72),
       child: Padding(
         padding: EdgeInsets.symmetric(
           horizontal: showNoteDate ? 16 : 20,
@@ -873,26 +875,30 @@ class _HomePageState extends State<HomePage> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: showLastModified && n.lastModified != null
-                      ? MainAxisAlignment.spaceBetween
-                      : MainAxisAlignment.center,
                   children: [
-                    n.title.isNullOrWhitespace()
-                        ? _highlightedText(
-                            _hideNoteTextSettings.value ? '' : n.displayText,
-                            _activeQuery,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
-                            fontSize: _previewFontSize,
-                          )
-                        : Text(
-                            n.title!,
-                            style: TextStyle(
-                              fontSize: _previewTitleFontSize,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: n.title.isNullOrWhitespace()
+                            ? _highlightedText(
+                                _hideNoteTextSettings.value
+                                    ? ''
+                                    : n.displayText,
+                                _activeQuery,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                                fontSize: _previewFontSize,
+                              )
+                            : Text(
+                                n.title!,
+                                style: TextStyle(
+                                  fontSize: _previewTitleFontSize,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                      ),
+                    ),
                     if (showLastModified && n.lastModified != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 5),
@@ -923,8 +929,8 @@ class _HomePageState extends State<HomePage> {
       color: Colors.transparent,
       child: InkWell(
         key: ValueKey('note-${n.id}-$_noteRippleGeneration'),
-        splashColor: onSurface.withOpacity(0.04),
-        highlightColor: onSurface.withOpacity(0.02),
+        splashColor: onSurface.withValues(alpha: 0.08),
+        highlightColor: onSurface.withValues(alpha: 0.04),
         onTap: () => _openNote(context, n),
         child: row,
       ),

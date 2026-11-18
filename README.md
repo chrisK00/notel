@@ -20,7 +20,9 @@
 ### How to deploy manually
 - Run
 ```bash
-flutter build apk --split-per-abi
+# flutter build apk --split-per-abi
+flutter build apk --release --target-platform=android-arm64
+start build/app/outputs/flutter-apk/
 ```
 - Connect Android device to PC
 - Modify the device id and run
