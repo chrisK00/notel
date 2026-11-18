@@ -18,8 +18,7 @@ class UserGuidePage extends StatelessWidget {
             title: 'Anteckningar',
             icon: Icons.note_alt_outlined,
             children: [
-              Text(
-                  'Tryck på + för att skapa en anteckning. Öppna en anteckning genom att trycka på den i listan.'),
+              Text('Tryck på + för att skapa en anteckning. Öppna en anteckning genom att trycka på den i listan.'),
               Text(
                   'Skriv en titel och innehåll. Använd Save för att spara. Om du går tillbaka med osparade ändringar får du välja om de ska sparas eller ignoreras.'),
               Text(
@@ -136,8 +135,7 @@ class UserGuidePage extends StatelessWidget {
                   'Snabbknapparna innehåller bland annat länk, sök, textstorlek, textstil, avdelare och kopiera formaterad text. Tryck på ⋯ för fler verktyg, till exempel kursiv, genomstrykning, färger, justering och kodblock. Tryck på texten för att placera markören.'),
               Text(
                   'Markera text och välj Insert URL för att göra den till en länk. Med en markör utan markering kan du skriva länktexten och adressen, så infogas länken där markören står. Knappen skapar länkar men redigerar inte redan befintliga länkar.'),
-              Text(
-                  'På dator öppnas länkar i redigeringsläget med Ctrl+klick. På mobil öppnas länkens meny med ett långt tryck.'),
+              Text('På mobil öppnas länkens meny med ett långt tryck.'),
               Text(
                   'I Settings kan du aktivera automatisk redigering av befintliga anteckningar och välja en genväg som infogar aktuell tid.'),
             ],
@@ -170,8 +168,7 @@ class UserGuidePage extends StatelessWidget {
             children: [
               Text(
                   'I Settings > Backup kan du exportera eller importera en krypterad säkerhetskopia. Veckovis säkerhetskopiering kräver en vald mapp och ett lösenord.'),
-              Text(
-                  'Spara lösenordet säkert. Utan det går det inte att läsa in den krypterade säkerhetskopian.'),
+              Text('Spara lösenordet säkert. Utan det går det inte att läsa in den krypterade säkerhetskopian.'),
               Text(
                   'Exportera regelbundet och förvara en kopia på en annan plats. Kontrollera att du minns lösenordet innan du behöver återställa en säkerhetskopia.'),
             ],
@@ -221,9 +218,7 @@ class _CopyableExample extends StatelessWidget {
           ),
           SelectableText(
             text,
-            style: monospace
-                ? const TextStyle(fontFamily: 'monospace', fontSize: 12)
-                : null,
+            style: monospace ? const TextStyle(fontFamily: 'monospace', fontSize: 12) : null,
           ),
         ],
       ),
@@ -250,10 +245,7 @@ class _GuideSection extends StatelessWidget {
         leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
         title: Text(
           title,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         initiallyExpanded: false,
         tilePadding: const EdgeInsets.symmetric(horizontal: 16),

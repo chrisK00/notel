@@ -61,7 +61,7 @@ void main() {
     expect(destination.document.toPlainText(), 'Second line\n\n');
   });
 
-  test('NotelClipboard pastes the full URL without scheme as a link', () async {
+  test('NotelClipboard pastes URL without scheme or www as a link', () async {
     const url = 'https://www.koket.se/kolakakor-i-airfryer';
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -85,7 +85,7 @@ void main() {
     final delta = controller.document.toDelta().toString();
     expect(
       controller.document.toPlainText(),
-      'www.koket.se/kolakakor-i-airfryer\n',
+      'koket.se/kolakakor-i-airfryer\n',
     );
     expect(delta, contains('https://www.koket.se/kolakakor-i-airfryer'));
     expect(

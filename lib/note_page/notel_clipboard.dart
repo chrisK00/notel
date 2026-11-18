@@ -121,6 +121,8 @@ class NotelClipboard {
   }
 
   static String _displayTextForUrl(Uri url) {
-    return url.toString().replaceFirst(RegExp(r'^https?://'), '');
+    return url
+        .toString()
+        .replaceFirst(RegExp(r'^https?://(?:www\.)?', caseSensitive: false), '');
   }
 }
