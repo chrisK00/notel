@@ -18,7 +18,8 @@ class NotesProvider extends ChangeNotifier {
   NoteSort _sort = NoteSort.created;
 
   UnmodifiableListView<Note> get notes => UnmodifiableListView(_notes);
-  UnmodifiableListView<Category> get categories => UnmodifiableListView(_categories);
+  UnmodifiableListView<Category> get categories =>
+      UnmodifiableListView(_categories);
   Category? get selectedCategory => _selectedCategory;
   bool get hasMore => _hasMore;
   bool get isLoadingMore => _isLoadingMore;
@@ -39,7 +40,8 @@ class NotesProvider extends ChangeNotifier {
       _categories.addAll(list);
       // Sync selectedCategory instance if it was updated or deleted
       if (_selectedCategory != null) {
-        final match = _categories.where((c) => c.id == _selectedCategory!.id).firstOrNull;
+        final match =
+            _categories.where((c) => c.id == _selectedCategory!.id).firstOrNull;
         _selectedCategory = match;
       }
       notifyListeners();
@@ -51,9 +53,12 @@ class NotesProvider extends ChangeNotifier {
   Future<void> setSelectedCategory(Category? category) async {
     _selectedCategory = category;
     final key = 'noteSort:${category?.id ?? 'all'}';
-    final saved = await SettingsRepository(Db.instance).getOrNull(key, StringSettings.fromMap);
-    _sort = NoteSort.values.firstWhere((s) => s.name == saved?.value, orElse: () => NoteSort.created);
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: category?.id, sort: _sort);
+    final saved = await SettingsRepository(Db.instance)
+        .getOrNull(key, StringSettings.fromMap);
+    _sort = NoteSort.values.firstWhere((s) => s.name == saved?.value,
+        orElse: () => NoteSort.created);
+    final loadedNotes = await HomePageRepository.loadNotes(
+        categoryId: category?.id, sort: _sort);
     init(loadedNotes);
   }
 
@@ -61,7 +66,8 @@ class NotesProvider extends ChangeNotifier {
     if (_selectedCategory == null) return;
     _selectedCategory = null;
     _sort = NoteSort.created;
-    final loadedNotes = await HomePageRepository.loadNotes(sort: NoteSort.created);
+    final loadedNotes =
+        await HomePageRepository.loadNotes(sort: NoteSort.created);
     init(loadedNotes);
   }
 
@@ -69,9 +75,12 @@ class NotesProvider extends ChangeNotifier {
     _sort = sort;
     await SettingsRepository(Db.instance).insertOrUpdate(
       'noteSort:${_selectedCategory?.id ?? 'all'}',
-      () => StringSettings('noteSort:${_selectedCategory?.id ?? 'all'}', sort.name).toMap(),
+      () => StringSettings(
+              'noteSort:${_selectedCategory?.id ?? 'all'}', sort.name)
+          .toMap(),
     );
-    final loadedNotes = await HomePageRepository.loadNotes(categoryId: _selectedCategory?.id, sort: sort);
+    final loadedNotes = await HomePageRepository.loadNotes(
+        categoryId: _selectedCategory?.id, sort: sort);
     init(loadedNotes);
   }
 
@@ -81,13 +90,19 @@ class NotesProvider extends ChangeNotifier {
     await NotePageRepository.setCategoryNotesHidden(category.id, !shown);
     final key = StringSettings.categoryHiddenDefaultKey(category.id);
     await SettingsRepository(Db.instance).insertOrUpdate(
-      key, () => StringSettings(key, (!shown).toString()).toMap());
-    init(await HomePageRepository.loadNotes(categoryId: category.id, sort: _sort));
+        key, () => StringSettings(key, (!shown).toString()).toMap());
+    init(await HomePageRepository.loadNotes(
+        categoryId: category.id, sort: _sort));
   }
 
-  Future<Category?> createCategory(String name) async {
+  Future<Category?> createCategory(String name,
+      {String iconKey = 'folder_outlined', int? iconColor}) async {
     try {
-      final category = await CategoryRepository.create(name);
+      final category = await CategoryRepository.create(
+        name,
+        iconKey: iconKey,
+        iconColor: iconColor,
+      );
       await loadCategories();
       return category;
     } catch (e) {
@@ -105,6 +120,23 @@ class NotesProvider extends ChangeNotifier {
       await loadCategories();
     } catch (e) {
       AppErrors.showError('Failed to update category name.');
+    }
+  }
+
+  Future<void> updateCategoryAppearance(
+    int id, {
+    required String iconKey,
+    required int? iconColor,
+  }) async {
+    try {
+      await CategoryRepository.updateAppearance(
+        id,
+        iconKey: iconKey,
+        iconColor: iconColor,
+      );
+      await loadCategories();
+    } catch (e) {
+      AppErrors.showError('Failed to update category appearance.');
     }
   }
 
@@ -140,7 +172,8 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await CategoryRepository.updateOrder(reordered.map((category) => category.id).toList());
+      await CategoryRepository.updateOrder(
+          reordered.map((category) => category.id).toList());
     } catch (e) {
       _categories
         ..clear()
@@ -158,7 +191,9 @@ class NotesProvider extends ChangeNotifier {
         _sort = NoteSort.created;
       }
       await loadCategories();
-      final loadedNotes = await HomePageRepository.loadNotes(categoryId: _selectedCategory?.id, sort: _selectedCategory == null ? NoteSort.created : _sort);
+      final loadedNotes = await HomePageRepository.loadNotes(
+          categoryId: _selectedCategory?.id,
+          sort: _selectedCategory == null ? NoteSort.created : _sort);
       init(loadedNotes);
     } catch (e) {
       AppErrors.showError('Failed to delete category.');
@@ -175,7 +210,8 @@ class NotesProvider extends ChangeNotifier {
         offset: _notes.length,
         categoryId: _selectedCategory?.id,
         sort: _sort,
-      )).toList();
+      ))
+          .toList();
       _notes.addAll(nextPage);
       _hasMore = nextPage.length >= HomePageRepository.pageSize;
     } catch (e) {
@@ -209,7 +245,8 @@ class NotesProvider extends ChangeNotifier {
       _notes[index].title = note.title;
       _notes[index].lastModified = note.lastModified;
       _notes[index].categoryId = note.categoryId;
-    } else if (_selectedCategory == null || note.categoryId == _selectedCategory!.id) {
+    } else if (_selectedCategory == null ||
+        note.categoryId == _selectedCategory!.id) {
       _notes.add(note);
     }
 
@@ -243,7 +280,9 @@ class NotesProvider extends ChangeNotifier {
   void _sortNotes() {
     _notes.sort((a, b) {
       if (_sort == NoteSort.name) {
-        final nameComp = (a.title ?? '').toLowerCase().compareTo((b.title ?? '').toLowerCase());
+        final nameComp = (a.title ?? '')
+            .toLowerCase()
+            .compareTo((b.title ?? '').toLowerCase());
         if (nameComp != 0) return nameComp;
         return b.id.compareTo(a.id);
       } else if (_sort == NoteSort.modified) {

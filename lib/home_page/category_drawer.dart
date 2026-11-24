@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:notel/home_page/category_icon_picker.dart';
+import 'package:notel/infrastructure/category_icons.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -8,52 +10,84 @@ class CategoryDrawer extends StatelessWidget {
   void _showCreateCategoryDialog(BuildContext context, NotesProvider provider) {
     final textController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    var selectedIconKey = 'folder_outlined';
+    int? selectedIconColor;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('New Category'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: textController,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'Category name',
-              border: OutlineInputBorder(),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          scrollable: true,
+          title: const Text('New Category'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: textController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Category name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Category name is required';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Icon'),
+                    const SizedBox(width: 8),
+                    Icon(
+                      CategoryIcons.forKey(selectedIconKey),
+                      color: CategoryIcons.colorFor(selectedIconColor),
+                    ),
+                  ],
+                ),
+                CategoryIconPicker(
+                  selectedKey: selectedIconKey,
+                  onSelected: (key) =>
+                      setDialogState(() => selectedIconKey = key),
+                ),
+                CategoryColorPicker(
+                  selectedColor: selectedIconColor,
+                  onSelected: (color) =>
+                      setDialogState(() => selectedIconColor = color),
+                ),
+              ],
             ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Category name is required';
-              }
-              return null;
-            },
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (formKey.currentState?.validate() ?? false) {
-                final name = textController.text.trim();
-                final category = await provider.createCategory(name);
-                if (dialogContext.mounted) {
-                  Navigator.pop(dialogContext);
-                }
-                if (context.mounted && category != null) {
-                  await provider.setSelectedCategory(category);
-                  if (context.mounted) {
-                    Navigator.pop(context); // close drawer
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (formKey.currentState?.validate() ?? false) {
+                  final name = textController.text.trim();
+                  final category = await provider.createCategory(name,
+                      iconKey: selectedIconKey, iconColor: selectedIconColor);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                  }
+                  if (context.mounted && category != null) {
+                    await provider.setSelectedCategory(category);
+                    if (context.mounted) {
+                      Navigator.pop(context); // close drawer
+                    }
                   }
                 }
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -67,25 +101,29 @@ class CategoryDrawer extends StatelessWidget {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         'Categories',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                       IconButton(
                         icon: const Icon(Icons.add),
                         tooltip: 'New category',
-                        onPressed: () => _showCreateCategoryDialog(context, provider),
+                        onPressed: () =>
+                            _showCreateCategoryDialog(context, provider),
                       ),
                     ],
                   ),
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.notes),
+                  minTileHeight: 64,
+                  leading: const Icon(Icons.notes, size: 26),
                   title: const Text('All notes'),
                   selected: provider.selectedCategory == null,
                   onTap: () async {
@@ -107,12 +145,21 @@ class CategoryDrawer extends StatelessWidget {
                           onReorder: provider.reorderCategories,
                           itemBuilder: (context, index) {
                             final category = provider.categories[index];
-                            final isSelected = provider.selectedCategory?.id == category.id;
+                            final isSelected =
+                                provider.selectedCategory?.id == category.id;
                             return ReorderableDelayedDragStartListener(
                               key: ValueKey(category.id),
                               index: index,
                               child: ListTile(
-                                leading: const Icon(Icons.folder_outlined),
+                                minTileHeight: 68,
+                                contentPadding:
+                                    const EdgeInsets.symmetric(horizontal: 20),
+                                leading: Icon(
+                                  CategoryIcons.forKey(category.iconKey),
+                                  color: CategoryIcons.colorFor(
+                                      category.iconColor),
+                                  size: 26,
+                                ),
                                 title: Text(category.name),
                                 selected: isSelected,
                                 onTap: () async {

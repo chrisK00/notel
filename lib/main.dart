@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'infrastructure/db.dart';
 import 'home_page/home_page.dart';
+import 'activity_log/activity_calendar_page.dart';
 import 'notes_provider.dart';
 import 'settings_page/settings_page.dart';
 
@@ -157,8 +158,14 @@ class _AppState extends State<App> {
             break;
           case 2:
             setState(() {
-              currentPage = const SettingsPage();
+              currentPage = const ActivityCalendarPage();
               currentPageIndex = 2;
+            });
+            break;
+          case 3:
+            setState(() {
+              currentPage = const SettingsPage();
+              currentPageIndex = 3;
             });
             break;
           default:
@@ -168,6 +175,8 @@ class _AppState extends State<App> {
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
         BottomNavigationBarItem(icon: Icon(Icons.folder_outlined), label: 'Categories'),
+        BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_month_outlined), label: 'Kalender'),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
       ],
     );

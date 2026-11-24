@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:notel/home_page/category_icon_picker.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:notel/home_page/home_page.dart';
 import 'package:notel/infrastructure/category_repository.dart';
 import 'package:notel/infrastructure/date_only.dart';
@@ -56,7 +58,8 @@ void main() {
     await db.insert('Note', {
       'id': 1,
       'title': 'Flutter Architecture',
-      'text': r'[{"insert":"Deep dive into state management and performance\n"}]',
+      'text':
+          r'[{"insert":"Deep dive into state management and performance\n"}]',
       'date': DateOnly.today().toString(),
       'lastModified': '2026-08-28 12:00:00.000',
       'categoryId': null,
@@ -83,14 +86,16 @@ void main() {
     // Default settings
     await db.insert('Settings', {'id': 'hideNoteText', 'value': 'false'});
     await db.insert('Settings', {'id': 'autoBackupEnabled', 'value': 'false'});
-    await db.insert('Settings', {'id': 'lastExportReminder', 'value': DateTime.now().toString()});
+    await db.insert('Settings',
+        {'id': 'lastExportReminder', 'value': DateTime.now().toString()});
   });
 
   tearDown(() async {
     await db.close();
   });
 
-  testWidgets('HomePage displays note cards with title, date, and preview', (tester) async {
+  testWidgets('HomePage displays note cards with title, date, and preview',
+      (tester) async {
     final notesProvider = NotesProvider();
 
     await tester.pumpWidget(
@@ -126,7 +131,8 @@ void main() {
     expect(find.textContaining('Last edited'), findsOneWidget);
   });
 
-  testWidgets('note card ripple is reset after leaving the note', (tester) async {
+  testWidgets('note card ripple is reset after leaving the note',
+      (tester) async {
     final notesProvider = NotesProvider();
 
     await tester.pumpWidget(
@@ -143,7 +149,8 @@ void main() {
     await tester.pumpAndSettle();
 
     final noteText = find.text('Flutter Architecture');
-    final noteCard = find.ancestor(of: noteText, matching: find.byType(InkWell));
+    final noteCard =
+        find.ancestor(of: noteText, matching: find.byType(InkWell));
     final initialInkWell = tester.widget<InkWell>(noteCard);
     final initialInkWellKey = initialInkWell.key;
     final onSurface = Theme.of(tester.element(noteCard)).colorScheme.onSurface;
@@ -165,10 +172,12 @@ void main() {
 
     final returnedNoteCard =
         find.ancestor(of: noteText, matching: find.byType(InkWell));
-    expect(tester.widget<InkWell>(returnedNoteCard).key, isNot(initialInkWellKey));
+    expect(
+        tester.widget<InkWell>(returnedNoteCard).key, isNot(initialInkWellKey));
   });
 
-  testWidgets('HomePage search bar filters notes with 300ms debounce', (tester) async {
+  testWidgets('HomePage search bar filters notes with 300ms debounce',
+      (tester) async {
     final notesProvider = NotesProvider();
 
     await tester.pumpWidget(
@@ -224,7 +233,9 @@ void main() {
     expect(find.text('Grocery Run'), findsOneWidget);
   });
 
-  testWidgets('Category popup menu has compact sort options and visible headers', (tester) async {
+  testWidgets(
+      'Category popup menu has compact sort options and visible headers',
+      (tester) async {
     int catId = 0;
     await tester.runAsync(() async {
       catId = await db.insert('Category', {
@@ -268,7 +279,9 @@ void main() {
     final topLeft = tester.getTopLeft(noteTitle);
     expect(topLeft.dx, greaterThanOrEqualTo(16.0));
 
-    final rowFinder = find.ancestor(of: noteTitle, matching: find.byType(ConstrainedBox)).first;
+    final rowFinder = find
+        .ancestor(of: noteTitle, matching: find.byType(ConstrainedBox))
+        .first;
     final rowSize = tester.getSize(rowFinder);
     expect(rowSize.height, greaterThanOrEqualTo(54.0));
 
@@ -284,12 +297,61 @@ void main() {
     expect(find.text('Name'), findsOneWidget);
     expect(find.text('Last modified'), findsOneWidget);
 
-    final sortItem = find.ancestor(of: find.text('Created'), matching: find.byType(PopupMenuItem<int>)).first;
+    final sortItem = find
+        .ancestor(
+            of: find.text('Created'), matching: find.byType(PopupMenuItem<int>))
+        .first;
     final itemSize = tester.getSize(sortItem);
     expect(itemSize.height, lessThanOrEqualTo(36.0));
   });
 
-  testWidgets('Note card grows by at most 5px when category hides the date', (tester) async {
+  testWidgets('category icon opens its picker and resets color to default',
+      (tester) async {
+    final notesProvider = NotesProvider();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<NotesProvider>.value(
+        value: notesProvider,
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    var categoryId = 0;
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+      final category = await CategoryRepository.create(
+        'Work',
+        iconColor: 0xFFFF0000,
+      );
+      categoryId = category.id;
+      await notesProvider.setSelectedCategory(category);
+    });
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Edit category icon'));
+    await tester.pumpAndSettle();
+    expect(find.text('Change category appearance'), findsNothing);
+    expect(find.byType(ColorPicker), findsOneWidget);
+    expect(find.byType(CategoryIconPicker), findsOneWidget);
+    final resetButton = find.text('Reset to default');
+    await tester.ensureVisible(resetButton);
+    await tester.tap(resetButton);
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final categoryRow = await tester.runAsync(
+      () async => (await db.query(
+        'Category',
+        where: 'id = ?',
+        whereArgs: [categoryId],
+      ))
+          .single,
+    );
+    expect(categoryRow?['iconKey'], 'folder_outlined');
+    expect(categoryRow?['iconColor'], isNull);
+  });
+
+  testWidgets('Note card grows by at most 5px when category hides the date',
+      (tester) async {
     int catId = 0;
     await tester.runAsync(() async {
       catId = await db.insert('Category', {
@@ -322,7 +384,8 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.runAsync(() async {
-      final category = (await CategoryRepository.getAll()).firstWhere((c) => c.name == 'Minimal');
+      final category = (await CategoryRepository.getAll())
+          .firstWhere((c) => c.name == 'Minimal');
       await notesProvider.setSelectedCategory(category);
     });
     await tester.pump();
@@ -331,7 +394,9 @@ void main() {
     final noteTitle = find.text('Short Title');
     expect(noteTitle, findsOneWidget);
 
-    final rowFinder = find.ancestor(of: noteTitle, matching: find.byType(ConstrainedBox)).first;
+    final rowFinder = find
+        .ancestor(of: noteTitle, matching: find.byType(ConstrainedBox))
+        .first;
     final rowSize = tester.getSize(rowFinder);
     expect(rowSize.height, greaterThanOrEqualTo(77.0));
     expect(rowSize.height, lessThanOrEqualTo(77.0));

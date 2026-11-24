@@ -9,18 +9,24 @@ void main() {
       final cat = Category(
         id: 1,
         name: 'Work',
+        iconKey: 'work_outline',
+        iconColor: 0xFF1565C0,
         showNoteDate: false,
         showLastModified: true,
       );
       final map = cat.toMap();
       expect(map['id'], 1);
       expect(map['name'], 'Work');
+      expect(map['iconKey'], 'work_outline');
+      expect(map['iconColor'], 0xFF1565C0);
       expect(map['showNoteDate'], 0);
       expect(map['showLastModified'], 1);
 
       final reconstructed = Category.fromMap(map);
       expect(reconstructed.id, 1);
       expect(reconstructed.name, 'Work');
+      expect(reconstructed.iconKey, 'work_outline');
+      expect(reconstructed.iconColor, 0xFF1565C0);
       expect(reconstructed.showNoteDate, isFalse);
       expect(reconstructed.showLastModified, isTrue);
     });
@@ -30,6 +36,8 @@ void main() {
 
       expect(category.showNoteDate, isTrue);
       expect(category.showLastModified, isNull);
+      expect(category.iconKey, 'folder_outlined');
+      expect(category.iconColor, isNull);
     });
 
     test('Note model categoryId serialization', () {

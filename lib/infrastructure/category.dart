@@ -2,12 +2,16 @@ class Category {
   Category({
     required this.id,
     required this.name,
+    this.iconKey = 'folder_outlined',
+    this.iconColor,
     this.showNoteDate = true,
     this.showLastModified,
   });
 
   int id;
   String name;
+  String iconKey;
+  int? iconColor;
   bool showNoteDate;
 
   /// Null means this category follows the app-wide preference.
@@ -17,8 +21,11 @@ class Category {
     return {
       'id': id == 0 ? null : id,
       'name': name,
+      'iconKey': iconKey,
+      'iconColor': iconColor,
       'showNoteDate': showNoteDate ? 1 : 0,
-      'showLastModified': showLastModified == null ? null : (showLastModified! ? 1 : 0),
+      'showLastModified':
+          showLastModified == null ? null : (showLastModified! ? 1 : 0),
     };
   }
 
@@ -26,7 +33,11 @@ class Category {
     return Category(
       id: map['id'] as int,
       name: map['name'] as String,
-      showNoteDate: map['showNoteDate'] == null || map['showNoteDate'] == 1 || map['showNoteDate'] == true,
+      iconKey: map['iconKey'] as String? ?? 'folder_outlined',
+      iconColor: map['iconColor'] as int?,
+      showNoteDate: map['showNoteDate'] == null ||
+          map['showNoteDate'] == 1 ||
+          map['showNoteDate'] == true,
       showLastModified: map['showLastModified'] == null
           ? null
           : map['showLastModified'] == 1 || map['showLastModified'] == true,
@@ -34,5 +45,6 @@ class Category {
   }
 
   @override
-  String toString() => 'Category{id: $id, name: $name, showNoteDate: $showNoteDate, showLastModified: $showLastModified}';
+  String toString() =>
+      'Category{id: $id, name: $name, iconKey: $iconKey, iconColor: $iconColor, showNoteDate: $showNoteDate, showLastModified: $showLastModified}';
 }

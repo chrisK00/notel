@@ -57,11 +57,13 @@ void main() {
     expect(remainingCategories.any((c) => c.id == cat.id), isFalse);
 
     // Verify note in category is deleted
-    final note1Rows = await db.query('Note', where: 'id = ?', whereArgs: [note.id]);
+    final note1Rows =
+        await db.query('Note', where: 'id = ?', whereArgs: [note.id]);
     expect(note1Rows.isEmpty, isTrue);
 
     // Verify note without category is intact
-    final note2Rows = await db.query('Note', where: 'id = ?', whereArgs: [note2.id]);
+    final note2Rows =
+        await db.query('Note', where: 'id = ?', whereArgs: [note2.id]);
     expect(note2Rows.isNotEmpty, isTrue);
 
     await db.close();
@@ -124,6 +126,46 @@ void main() {
       (await CategoryRepository.getAll()).map((category) => category.name),
       ['Errands', 'Work', 'Personal'],
     );
+    await db.close();
+  });
+
+  test('categories save and reload their selected icon', () async {
+    final db = await openDatabase(
+      inMemoryDatabasePath,
+      version: 1,
+      onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE Category(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
+          )
+        ''');
+      },
+    );
+    Db.instance = db;
+
+    await db.insert('Category', {'name': 'Existing'});
+    final category = await CategoryRepository.create(
+      'Work',
+      iconKey: 'work_outline',
+      iconColor: 0xFF1565C0,
+    );
+    final reloaded = await CategoryRepository.getAll();
+
+    expect(reloaded.first.iconKey, 'folder_outlined');
+    expect(reloaded.last.id, category.id);
+    expect(reloaded.last.iconKey, 'work_outline');
+    expect(reloaded.last.iconColor, 0xFF1565C0);
+
+    await CategoryRepository.updateAppearance(
+      category.id,
+      iconKey: 'book_outlined',
+      iconColor: 0xFFC62828,
+    );
+    final updated = (await CategoryRepository.getAll()).last;
+    expect(updated.iconKey, 'book_outlined');
+    expect(updated.iconColor, 0xFFC62828);
+
     await db.close();
   });
 }

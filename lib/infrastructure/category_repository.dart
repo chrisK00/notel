@@ -4,11 +4,16 @@ import 'package:notel/infrastructure/db.dart';
 class CategoryRepository {
   static Future<List<Category>> getAll() async {
     await _ensureSortOrderColumn();
-    final rows = await Db.instance.query(Db.categoryTable, orderBy: 'sortOrder ASC, id ASC');
+    final rows = await Db.instance
+        .query(Db.categoryTable, orderBy: 'sortOrder ASC, id ASC');
     return rows.map(Category.fromMap).toList();
   }
 
-  static Future<Category> create(String name) async {
+  static Future<Category> create(
+    String name, {
+    String iconKey = 'folder_outlined',
+    int? iconColor,
+  }) async {
     final trimmedName = name.trim();
     await _ensureSortOrderColumn();
     final lastOrder = await Db.instance.rawQuery(
@@ -17,9 +22,20 @@ class CategoryRepository {
     final sortOrder = (lastOrder.single['value'] as int? ?? -1) + 1;
     final id = await Db.instance.insert(
       Db.categoryTable,
-      {'name': trimmedName, 'sortOrder': sortOrder, 'showNoteDate': 1},
+      {
+        'name': trimmedName,
+        'iconKey': iconKey,
+        'iconColor': iconColor,
+        'sortOrder': sortOrder,
+        'showNoteDate': 1
+      },
     );
-    return Category(id: id, name: trimmedName);
+    return Category(
+      id: id,
+      name: trimmedName,
+      iconKey: iconKey,
+      iconColor: iconColor,
+    );
   }
 
   static Future<void> updateOrder(List<int> categoryIds) async {
@@ -48,6 +64,19 @@ class CategoryRepository {
     );
   }
 
+  static Future<void> updateAppearance(
+    int id, {
+    required String iconKey,
+    required int? iconColor,
+  }) async {
+    await Db.instance.update(
+      Db.categoryTable,
+      {'iconKey': iconKey, 'iconColor': iconColor},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   static Future<void> updateDisplaySettings(
     int id, {
     required bool showNoteDate,
@@ -57,7 +86,8 @@ class CategoryRepository {
       Db.categoryTable,
       {
         'showNoteDate': showNoteDate ? 1 : 0,
-        'showLastModified': showLastModified == null ? null : (showLastModified ? 1 : 0),
+        'showLastModified':
+            showLastModified == null ? null : (showLastModified ? 1 : 0),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -80,12 +110,14 @@ class CategoryRepository {
   }
 
   static Future<void> _ensureSortOrderColumn() async {
-    final columns = await Db.instance.rawQuery('PRAGMA table_info(${Db.categoryTable})');
+    final columns =
+        await Db.instance.rawQuery('PRAGMA table_info(${Db.categoryTable})');
     if (!columns.any((column) => column['name'] == 'sortOrder')) {
       await Db.instance.execute(
         'ALTER TABLE ${Db.categoryTable} ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0',
       );
-      await Db.instance.execute('UPDATE ${Db.categoryTable} SET sortOrder = id');
+      await Db.instance
+          .execute('UPDATE ${Db.categoryTable} SET sortOrder = id');
     }
     if (!columns.any((column) => column['name'] == 'showNoteDate')) {
       await Db.instance.execute(
@@ -95,6 +127,16 @@ class CategoryRepository {
     if (!columns.any((column) => column['name'] == 'showLastModified')) {
       await Db.instance.execute(
         'ALTER TABLE ${Db.categoryTable} ADD COLUMN showLastModified INTEGER',
+      );
+    }
+    if (!columns.any((column) => column['name'] == 'iconKey')) {
+      await Db.instance.execute(
+        "ALTER TABLE ${Db.categoryTable} ADD COLUMN iconKey TEXT NOT NULL DEFAULT 'folder_outlined'",
+      );
+    }
+    if (!columns.any((column) => column['name'] == 'iconColor')) {
+      await Db.instance.execute(
+        'ALTER TABLE ${Db.categoryTable} ADD COLUMN iconColor INTEGER',
       );
     }
   }

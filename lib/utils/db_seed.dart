@@ -22,7 +22,9 @@ class DebugUtil {
           Note(
                   id: i,
                   title: i % 2 == 0 ? "$i ape" : null,
-                  displayText: '[{"insert":"hi $i\\n energy pooper\\n"}, {"insert":"section 2\\n"}]',
+                  displayText: i == 4
+                      ? '[{"insert":"hi $i\\n energy pooper\\n"}, {"insert":"section 2\\n"}]'
+                      : '[{"insert":"start d3 25mg\\n"}]',
                   date: DateOnly(today.year, 3, i))
               .toMap());
     }

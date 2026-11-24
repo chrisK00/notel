@@ -128,6 +128,16 @@ class UserGuidePage extends StatelessWidget {
             ],
           ),
           _GuideSection(
+            title: 'Kalender',
+            icon: Icons.calendar_month_outlined,
+            children: [
+              Text(
+                  'Skriv till exempel “08:00 start zo 25mg” eller “stop zo 25 apa”; kalendern visar “zo 25mg” respektive “zo 25”. Stop är valfritt. Tidsintervall visas när båda raderna har klockslag.'),
+              Text(
+                  'Välj en dag för att se hur länge sedan den var. Sök på en del av namnet, till exempel “zo”, eller välj en aktivitet från listan. Tryck på en rad för att öppna anteckningen.'),
+            ],
+          ),
+          _GuideSection(
             title: 'Redigering',
             icon: Icons.edit_note,
             children: [
