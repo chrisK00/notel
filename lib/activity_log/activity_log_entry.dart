@@ -27,7 +27,7 @@ class ActivityLogEntry {
   String get activityLabelKey => activity.toLowerCase();
 
   static final _linePattern = RegExp(
-    r'^\s*(?:(\d{1,2}):(\d{2})\s+)?(start|stop)\s+([^\s]+)(?:\s+(.*?))?\s*$',
+    r'^\s*(?:(\d{1,2})[:.](\d{2})\s+)?(start|stop)\s+([^\s]+)(?:\s+(.*?))?\s*$',
     caseSensitive: false,
   );
   static final _quantityPattern = RegExp(r'^(\d+(?:[.,]\d+)?)([a-zA-Zµμ%]+)?$');

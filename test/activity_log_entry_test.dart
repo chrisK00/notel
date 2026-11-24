@@ -52,4 +52,21 @@ void main() {
     expect(entries.single.timestamp, DateTime(2026, 11, 24));
     expect(entries.single.hasExplicitTime, isFalse);
   });
+
+  test('parses dot-separated bold time before activity text', () {
+    final note = Note(
+      id: 9,
+      date: const DateOnly(2026, 3, 5),
+      displayText: '[{"insert":"23.00 ","attributes":{"bold":true}},'
+          '{"insert":"start zo 25\\n"}]',
+    );
+
+    final entries = ActivityLogEntry.fromNote(note);
+
+    expect(entries, hasLength(1));
+    expect(entries.single.action, ActivityLogAction.start);
+    expect(entries.single.activity, 'zo 25');
+    expect(entries.single.timestamp, DateTime(2026, 3, 5, 23));
+    expect(entries.single.hasExplicitTime, isTrue);
+  });
 }
