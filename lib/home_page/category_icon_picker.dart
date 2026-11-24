@@ -55,7 +55,11 @@ class CategoryColorPicker extends StatelessWidget {
       children: [
         ColorPicker(
           pickerColor: color,
-          onColorChanged: (color) => onSelected(color.toARGB32()),
+          onColorChanged: (color) {
+            // Color.value supports the Flutter 3.24 SDK used by CI.
+            // ignore: deprecated_member_use
+            onSelected(color.value);
+          },
           colorPickerWidth: 260,
           pickerAreaHeightPercent: 0.65,
           enableAlpha: false,

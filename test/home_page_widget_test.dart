@@ -154,8 +154,8 @@ void main() {
     final initialInkWell = tester.widget<InkWell>(noteCard);
     final initialInkWellKey = initialInkWell.key;
     final onSurface = Theme.of(tester.element(noteCard)).colorScheme.onSurface;
-    expect(initialInkWell.splashColor, onSurface.withValues(alpha: 0.04));
-    expect(initialInkWell.highlightColor, onSurface.withValues(alpha: 0.03));
+    expect(initialInkWell.splashColor, onSurface.withOpacity(0.04));
+    expect(initialInkWell.highlightColor, onSurface.withOpacity(0.03));
 
     await tester.tap(noteText);
     await tester.runAsync(() async {

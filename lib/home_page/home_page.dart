@@ -991,8 +991,8 @@ class _HomePageState extends State<HomePage> {
       color: Colors.transparent,
       child: InkWell(
         key: ValueKey('note-${n.id}-$_noteRippleGeneration'),
-        splashColor: onSurface.withValues(alpha: 0.04),
-        highlightColor: onSurface.withValues(alpha: 0.03),
+        splashColor: onSurface.withOpacity(0.04),
+        highlightColor: onSurface.withOpacity(0.03),
         onTap: () => _openNote(context, n),
         child: row,
       ),
