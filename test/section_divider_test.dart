@@ -30,7 +30,7 @@ void main() {
                   ),
                 ),
               ),
-              NoteTextToolbar(controller: controller),
+              NoteTextToolbar(controller: controller, noteId: 1),
             ],
           ),
         ),

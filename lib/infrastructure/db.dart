@@ -9,6 +9,7 @@ class Db {
   static const noteTable = "Note";
   static const settingsTable = "Settings";
   static const categoryTable = "Category";
+  static const commentTable = "NoteComment";
 
   // ignore: null_check_always_fails
   static Database instance = null!;
@@ -38,6 +39,9 @@ class Db {
     if (oldVersion < 8) {
       await _version8(db);
     }
+    if (oldVersion < 9) {
+      await _version9(db);
+    }
   }
 
   static Future<void> _setupDatabase(Database db, int version) async {
@@ -52,6 +56,7 @@ class Db {
     await _version6(db);
     await _version7(db);
     await _version8(db);
+    await _version9(db);
   }
 
   static Future<void> _version2(Database db) async {
@@ -122,6 +127,24 @@ class Db {
     }
   }
 
+  static Future<void> _version9(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $commentTable(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        noteId INTEGER NOT NULL,
+        parentId INTEGER,
+        quotedText TEXT NOT NULL,
+        startOffset INTEGER NOT NULL,
+        endOffset INTEGER NOT NULL,
+        body TEXT NOT NULL,
+        createdAt TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_${commentTable}_noteId ON $commentTable(noteId)',
+    );
+  }
+
   static Future initialize({bool useDebugDatabase = false}) async {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final dbName = useDebugDatabase ? debugDatabaseName : databaseName;
@@ -153,6 +176,7 @@ class Db {
       }
       await _version7(db);
       await _version8(db);
-    }, version: 8);
+      await _version9(db);
+    }, version: 9);
   }
 }

@@ -122,6 +122,19 @@ void main() {
     final quillFinder = find.byType(QuillEditor);
     expect(quillFinder, findsOneWidget);
     final quillWidget = tester.widget<QuillEditor>(quillFinder);
+    expect(
+      quillWidget.configurations.padding,
+      const EdgeInsets.fromLTRB(16, 16, 16, 16),
+    );
+    final titlePadding = tester.widget<Padding>(
+      find
+          .ancestor(
+            of: find.byKey(const ValueKey('note-title')),
+            matching: find.byType(Padding),
+          )
+          .first,
+    );
+    expect(titlePadding.padding, const EdgeInsets.fromLTRB(16, 4, 16, 0));
     expect(quillWidget.configurations.autoFocus, isFalse);
     expect(quillWidget.focusNode.hasFocus, isFalse);
 

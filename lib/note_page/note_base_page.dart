@@ -10,17 +10,22 @@ import 'package:notel/infrastructure/category.dart';
 import 'package:notel/infrastructure/category_icons.dart';
 import 'package:notel/infrastructure/date_only.dart';
 import 'package:notel/infrastructure/db.dart';
+import 'package:notel/infrastructure/editor_shortcut.dart';
 import 'package:notel/infrastructure/note.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/main.dart';
 import 'package:notel/home_page/category_icon_picker.dart';
 import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/note_page/section_divider.dart';
+import 'package:notel/note_page/exercise_embed.dart';
+import 'package:notel/note_page/note_attachments_sheet.dart';
+import 'package:notel/note_page/image_embed.dart';
 import 'package:notel/note_page/note_text_toolbar.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:notel/search/search_query.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 class _FastCaretScrollController extends ScrollController {
   @override
@@ -50,6 +55,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
   Note note = Note(id: 0);
   var hasUnsavedChanges = false;
   String timeShortcut = "..";
+  List<EditorShortcut> editorShortcuts = [];
   bool get isNewNote => false;
   bool _autoEditExistingNotes = false;
   bool _isDocEmpty = false;
@@ -57,11 +63,13 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       isNewNote || _isDocEmpty || _autoEditExistingNotes;
   final TextEditingController textEditingController = TextEditingController();
   StreamSubscription<DocChange>? _docChangeSub;
+  bool _isExpandingShortcut = false;
 
   List<({int offset, int length})> searchMatches = [];
   int searchMatchIndex = 0;
   bool showSearchNavigator = false;
   String searchTermsSummary = '';
+  bool _keepScreenOn = false;
 
   void attachDocListener() {
     _docChangeSub?.cancel();
@@ -73,17 +81,24 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     _docChangeSub = null;
   }
 
+  late final AppLifecycleListener _lifecycleListener;
+
   @override
   void initState() {
     super.initState();
     _focusNode.canRequestFocus = isNewNote;
-    _loadTimeShortcut();
+    _lifecycleListener = AppLifecycleListener(
+      onInactive: _saveOnAppBackground,
+      onPause: _saveOnAppBackground,
+      onHide: _saveOnAppBackground,
+      onDetach: _saveOnAppBackground,
+    );
     _initAll();
   }
 
   Future<void> _initAll() async {
     await Future.wait([
-      _loadAutoEditSetting(),
+      _loadSettings(),
       initNote(),
     ]);
     if (mounted) {
@@ -101,29 +116,65 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
       }
       attachDocListener();
       setState(() => hasUnsavedChanges = false);
+      await _recordActiveNote();
     }
   }
 
-  Future<void> _loadTimeShortcut() async {
+  void _saveOnAppBackground() {
+    if (hasUnsavedChanges && mounted) {
+      try {
+        final notesProvider = Provider.of<NotesProvider>(context, listen: false);
+        _onSave(notesProvider);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _recordActiveNote() async {
+    if (note.id > 0) {
+      try {
+        await SettingsRepository(Db.instance).insertOrUpdate(
+          StringSettings.activeNoteIdKey,
+          () => StringSettings(
+            StringSettings.activeNoteIdKey,
+            note.id.toString(),
+          ).toMap(),
+        );
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _clearActiveNote() async {
     try {
-      final setting = await SettingsRepository(Db.instance).getOrNull(
-        StringSettings.timeShortcutKey,
-        StringSettings.fromMap,
+      await SettingsRepository(Db.instance).insertOrUpdate(
+        StringSettings.activeNoteIdKey,
+        () => StringSettings(StringSettings.activeNoteIdKey, '').toMap(),
       );
-      if (setting != null) {
-        timeShortcut = setting.value;
-      }
     } catch (_) {}
   }
 
-  Future<void> _loadAutoEditSetting() async {
+  Future<void> _loadSettings() async {
     try {
-      final setting = await SettingsRepository(Db.instance).getOrNull(
-        BoolSettings.autoEditExistingNotesKey,
-        BoolSettings.fromMap,
+      final repository = SettingsRepository(Db.instance);
+      final rows = await repository.db.query(
+        Db.settingsTable,
+        where: 'id IN (?, ?, ?)',
+        whereArgs: [
+          StringSettings.timeShortcutKey,
+          StringSettings.editorShortcutsKey,
+          BoolSettings.autoEditExistingNotesKey,
+        ],
       );
-      if (setting != null) {
-        _autoEditExistingNotes = setting.value;
+      if (!mounted) return;
+      for (final row in rows) {
+        final id = row['id'] as String?;
+        final value = row['value'] as String?;
+        if (id == StringSettings.timeShortcutKey && value != null) {
+          timeShortcut = value;
+        } else if (id == StringSettings.editorShortcutsKey && value != null) {
+          editorShortcuts = EditorShortcut.decodeList(value);
+        } else if (id == BoolSettings.autoEditExistingNotesKey && value != null) {
+          _autoEditExistingNotes = bool.tryParse(value) ?? false;
+        }
       }
     } catch (_) {}
   }
@@ -160,10 +211,15 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     detachDocListener();
     controller.dispose();
     _focusNode.dispose();
     _scrollController.dispose();
+    // Always release the wakelock when leaving the note.
+    if (_keepScreenOn) {
+      WakelockPlus.disable();
+    }
     super.dispose();
   }
 
@@ -339,11 +395,53 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     controller.formatSelection(Attribute.clone(Attribute.bold, null));
   }
 
+  void _insertEditorShortcut(DocChange event) {
+    final operations = event.change.operations;
+    if (operations.isEmpty || !operations.last.isInsert) return;
+    if (operations.last.data is! String) return;
+
+    final baseOffset = controller.selection.baseOffset;
+    final plainText = controller.document.toPlainText();
+    // Prefer the longest trigger when one shortcut is the suffix of another.
+    final shortcuts = [...editorShortcuts]
+      ..sort((a, b) => b.trigger.length.compareTo(a.trigger.length));
+    for (final shortcut in shortcuts) {
+      if (baseOffset < shortcut.trigger.length) continue;
+      final start = baseOffset - shortcut.trigger.length;
+      if (start + shortcut.trigger.length > plainText.length ||
+          plainText.substring(start, start + shortcut.trigger.length) !=
+              shortcut.trigger) {
+        continue;
+      }
+
+      _isExpandingShortcut = true;
+      try {
+        controller.replaceText(
+          start,
+          shortcut.trigger.length,
+          shortcut.replacement,
+          TextSelection.collapsed(offset: start + shortcut.replacement.length),
+        );
+        if (shortcut.bold) {
+          controller.formatText(
+              start, shortcut.replacement.length, Attribute.bold);
+          controller.formatSelection(Attribute.clone(Attribute.bold, null));
+        }
+      } finally {
+        _isExpandingShortcut = false;
+      }
+      return;
+    }
+  }
+
   void onTextChanged(DocChange event) {
     writeLine('Text changed: $event');
     setState(() => hasUnsavedChanges = true);
 
-    _insertTimeShortcut(event);
+    if (!_isExpandingShortcut) {
+      _insertTimeShortcut(event);
+      _insertEditorShortcut(event);
+    }
   }
 
 // TODO move this to edit page?
@@ -373,6 +471,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
 
   Future<void> _handleBackNavigation(NotesProvider notesProvider) async {
     await _showSaveDialog(notesProvider);
+    await _clearActiveNote();
     if (!mounted) return;
     await navigateToPreviousPage(context, notesProvider);
     if (mounted) {
@@ -399,6 +498,15 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     );
   }
 
+  Future<void> _showAttachments() {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => NoteAttachmentsSheet(document: controller.document),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<NotesProvider>(builder: (context, provider, child) {
@@ -421,10 +529,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                   // Title scrolls away with the note body and follows the action row.
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(25, 4, 25, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                       child: Opacity(
                         opacity: 0.9,
                         child: TextField(
+                          key: const ValueKey('note-title'),
                           controller: textEditingController,
                           onChanged: (_) =>
                               setState(() => hasUnsavedChanges = true),
@@ -447,11 +556,14 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                       configurations: QuillEditorConfigurations(
                         autoFocus: shouldAutoFocus,
                         controller: controller,
-                        padding: const EdgeInsets.only(
-                            left: 25, right: 25, top: 20, bottom: 20),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                         expands: false,
                         scrollable: false,
-                        embedBuilders: const [SectionDividerEmbedBuilder()],
+                        embedBuilders: const [
+                          SectionDividerEmbedBuilder(),
+                          ExerciseEmbedBuilder(),
+                          ImageEmbedBuilder(),
+                        ],
                         onTapDown: (details, getPositionForOffset) {
                           _focusNode.canRequestFocus = true;
                           return false;
@@ -480,7 +592,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
             ),
             SafeArea(
               top: false,
-              child: NoteTextToolbar(controller: controller),
+              child: NoteTextToolbar(controller: controller, noteId: note.id),
             ),
           ],
         )),
@@ -509,8 +621,31 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
     return category?.showNoteDate ?? true;
   }
 
-  Widget actions(BuildContext context, NotesProvider notesProvider) {
-    final showDateAboveTitle = _showDateAboveTitle(notesProvider);
+  /// A compact button shown in the action bar when date is hidden.
+  /// Tapping it inserts an image at the beginning of the note (cover image).
+  /// If the note already starts with an image it shows a thumbnail instead.
+  Widget _coverImageButton() {
+    final firstPath = firstImagePath(
+        jsonEncode(controller.document.toDelta().toJson()));
+    if (firstPath != null) {
+      return GestureDetector(
+        onTap: () => pickAndInsertImage(context, controller),
+        child: buildNoteImageThumbnail(firstPath, size: 36),
+      );
+    }
+    return IconButton(
+      tooltip: 'Add cover image',
+      icon: const Icon(Icons.add_photo_alternate_outlined, size: 20),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      ),
+      onPressed: () => pickAndInsertImage(context, controller),
+    );
+  }
+
+  Widget actions(BuildContext context, NotesProvider notesProvider) {    final showDateAboveTitle = _showDateAboveTitle(notesProvider);
     return SafeArea(
       bottom: false,
       top: true,
@@ -521,6 +656,11 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
           children: [
             // ⋮ stays tight at the top.
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              IconButton(
+                tooltip: 'Attachments',
+                icon: const Icon(Icons.attach_file),
+                onPressed: _showAttachments,
+              ),
               PopupMenuButton<int>(
                   offset: Offset.fromDirection(3, 10),
                   padding: EdgeInsets.zero,
@@ -564,6 +704,15 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                         break;
                       case 5:
                         await updateDate(notesProvider);
+                        break;
+                      case 6:
+                        final next = !_keepScreenOn;
+                        setState(() => _keepScreenOn = next);
+                        if (next) {
+                          await WakelockPlus.enable();
+                        } else {
+                          await WakelockPlus.disable();
+                        }
                         break;
                       default:
                     }
@@ -629,7 +778,21 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [Icon(Icons.delete), Text("delete")],
                           ),
-                        )
+                        ),
+                        PopupMenuItem<int>(
+                          value: 6,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Icon(_keepScreenOn
+                                  ? Icons.screen_lock_portrait
+                                  : Icons.stay_current_portrait),
+                              Text(_keepScreenOn
+                                  ? 'allow sleep'
+                                  : 'keep screen on'),
+                            ],
+                          ),
+                        ),
                       ])
             ]),
             // Moves the buttons and title below together.
@@ -656,7 +819,7 @@ abstract class NoteBasePage<T extends StatefulWidget> extends State<T> {
                             .format(note.date.toDateTime()),
                       ))
                 else
-                  const SizedBox.shrink(),
+                  _coverImageButton(),
                 saveButton(notesProvider),
               ],
             ),

@@ -96,6 +96,18 @@ class CategoryRepository {
 
   static Future<void> delete(int id) async {
     await Db.instance.transaction((txn) async {
+      final commentTable = await txn.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        [Db.commentTable],
+      );
+      if (commentTable.isNotEmpty) {
+        await txn.delete(
+          Db.commentTable,
+          where:
+              'noteId IN (SELECT id FROM ${Db.noteTable} WHERE categoryId = ?)',
+          whereArgs: [id],
+        );
+      }
       await txn.delete(
         Db.noteTable,
         where: 'categoryId = ?',

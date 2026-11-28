@@ -1,5 +1,6 @@
 import 'package:notel/infrastructure/db.dart';
 import 'package:notel/infrastructure/date_only.dart';
+import 'package:notel/infrastructure/note_comment_repository.dart';
 
 import '../infrastructure/note.dart';
 import '../infrastructure/settings_repository.dart';
@@ -12,6 +13,7 @@ class NotePageRepository {
   }
 
   static Future deleteNote(int noteId) async {
+    await NoteCommentRepository.deleteForNote(noteId);
     await Db.instance
         .delete(Db.noteTable, where: 'id = ?', whereArgs: [noteId]);
   }
@@ -22,7 +24,8 @@ class NotePageRepository {
     var hidden = 0;
     if (categoryId != null) {
       final setting = await SettingsRepository(Db.instance).getOrNull(
-          StringSettings.categoryHiddenDefaultKey(categoryId), StringSettings.fromMap);
+          StringSettings.categoryHiddenDefaultKey(categoryId),
+          StringSettings.fromMap);
       hidden = setting?.value == 'true' ? 1 : 0;
     }
     final noteId = await Db.instance.insert(Db.noteTable, {
@@ -32,7 +35,13 @@ class NotePageRepository {
       'categoryId': categoryId,
       'hidden': hidden,
     });
-    final newNote = Note(id: noteId, date: today, lastModified: now, displayText: '', categoryId: categoryId, hidden: hidden == 1);
+    final newNote = Note(
+        id: noteId,
+        date: today,
+        lastModified: now,
+        displayText: '',
+        categoryId: categoryId,
+        hidden: hidden == 1);
     return newNote;
   }
 
@@ -40,26 +49,34 @@ class NotePageRepository {
     final now = DateTime.now();
     return await Db.instance.update(
         Db.noteTable,
-        {'categoryId': categoryId, 'lastModified': now.toString(), if (categoryId == null) 'hidden': 0},
+        {
+          'categoryId': categoryId,
+          'lastModified': now.toString(),
+          if (categoryId == null) 'hidden': 0
+        },
         where: 'id = ?',
         whereArgs: [noteId]);
   }
 
-  static Future<int> setHiddenFromHome(int noteId, bool hidden) => Db.instance.update(
-        Db.noteTable, {'hidden': hidden ? 1 : 0}, where: 'id = ?', whereArgs: [noteId]);
+  static Future<int> setHiddenFromHome(int noteId, bool hidden) =>
+      Db.instance.update(Db.noteTable, {'hidden': hidden ? 1 : 0},
+          where: 'id = ?', whereArgs: [noteId]);
 
-  static Future<int> setCategoryNotesHidden(int categoryId, bool hidden) => Db.instance.update(
-      Db.noteTable, {'hidden': hidden ? 1 : 0}, where: 'categoryId = ?', whereArgs: [categoryId]);
+  static Future<int> setCategoryNotesHidden(int categoryId, bool hidden) =>
+      Db.instance.update(Db.noteTable, {'hidden': hidden ? 1 : 0},
+          where: 'categoryId = ?', whereArgs: [categoryId]);
 
   static Future<int> updateNoteText(int noteId, String jsonText) async {
     final now = DateTime.now();
-    return await Db.instance.update(Db.noteTable, {'TEXT': jsonText, 'lastModified': now.toString()},
+    return await Db.instance.update(
+        Db.noteTable, {'TEXT': jsonText, 'lastModified': now.toString()},
         where: 'id = ?', whereArgs: [noteId]);
   }
 
   static Future<int> updateNoteTitle(int noteId, String? title) async {
     final now = DateTime.now();
-    return await Db.instance.update(Db.noteTable, {'title': title, 'lastModified': now.toString()},
+    return await Db.instance.update(
+        Db.noteTable, {'title': title, 'lastModified': now.toString()},
         where: 'id = ?', whereArgs: [noteId]);
   }
 
@@ -68,10 +85,42 @@ class NotePageRepository {
   static Future<int> updateNoteDate(int noteId, DateTime date) async {
     final now = DateTime.now();
     final dateOnly = DateOnly.fromDateTime(date);
-    return await Db.instance.update(
-        Db.noteTable,
+    return await Db.instance.update(Db.noteTable,
         {'date': dateOnly.toString(), 'lastModified': now.toString()},
-        where: 'id = ?',
-        whereArgs: [noteId]);
+        where: 'id = ?', whereArgs: [noteId]);
+  }
+
+  /// Creates a new note that is a copy of [source].
+  /// The copy gets today's date and a fresh [lastModified] timestamp.
+  static Future<Note> duplicateNote(Note source) async {
+    final now = DateTime.now();
+    final today = DateOnly.today();
+    var hidden = 0;
+    if (source.categoryId != null) {
+      final setting = await SettingsRepository(Db.instance).getOrNull(
+          StringSettings.categoryHiddenDefaultKey(source.categoryId!),
+          StringSettings.fromMap);
+      hidden = setting?.value == 'true' ? 1 : 0;
+    }
+    final title = source.title?.trim().isNotEmpty == true
+        ? '${source.title!.trim()} (copy)'
+        : source.title;
+    final noteId = await Db.instance.insert(Db.noteTable, {
+      'text': source.displayText,
+      'date': today.toString(),
+      'lastModified': now.toString(),
+      'title': title,
+      'categoryId': source.categoryId,
+      'hidden': hidden,
+    });
+    return Note(
+      id: noteId,
+      displayText: source.displayText,
+      date: today,
+      lastModified: now,
+      title: title,
+      categoryId: source.categoryId,
+      hidden: hidden == 1,
+    );
   }
 }

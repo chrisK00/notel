@@ -13,17 +13,21 @@ class SettingsPageRepository {
   static Future<Map<String, Object?>> createBackupPayload() async {
     final notes = await getNotes();
     final categories = await getCategories();
+    final comments = await Db.instance.query(Db.commentTable);
     return {
       'version': 1,
       'exportedAt': DateTime.now().toIso8601String(),
       'notes': notes,
       'categories': categories,
+      'comments': comments,
     };
   }
 
   static Future<void> restoreBackupPayload(dynamic decoded) async {
     if (decoded is List) {
-      final notesJson = decoded.map<Map<String, Object?>>((e) => Map<String, Object?>.from(e)).toList();
+      final notesJson = decoded
+          .map<Map<String, Object?>>((e) => Map<String, Object?>.from(e))
+          .toList();
       await insertNotes(notesJson);
     } else if (decoded is Map) {
       if (decoded['categories'] is List) {
@@ -38,10 +42,17 @@ class SettingsPageRepository {
             .toList();
         await insertNotes(notesJson);
       }
+      if (decoded['comments'] is List) {
+        final commentsJson = (decoded['comments'] as List)
+            .map<Map<String, Object?>>((e) => Map<String, Object?>.from(e))
+            .toList();
+        await insertComments(commentsJson);
+      }
     }
   }
 
-  static Future<void> insertCategories(List<Map<String, Object?>> categories) async {
+  static Future<void> insertCategories(
+      List<Map<String, Object?>> categories) async {
     final batch = Db.instance.batch();
     for (var cat in categories) {
       batch.insert(
@@ -64,6 +75,19 @@ class SettingsPageRepository {
       );
     }
 
+    await batch.commit(noResult: true);
+  }
+
+  static Future<void> insertComments(
+      List<Map<String, Object?>> comments) async {
+    final batch = Db.instance.batch();
+    for (final comment in comments) {
+      batch.insert(
+        Db.commentTable,
+        comment,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
     await batch.commit(noResult: true);
   }
 }

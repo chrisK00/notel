@@ -131,6 +131,53 @@ void main() {
     expect(find.textContaining('Last edited'), findsOneWidget);
   });
 
+  testWidgets('long press opens note actions and can move a note to a folder',
+      (tester) async {
+    final category =
+        await tester.runAsync(() => CategoryRepository.create('Work'));
+    final notesProvider = NotesProvider();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<NotesProvider>.value(
+        value: notesProvider,
+        child: const MaterialApp(home: HomePage()),
+      ),
+    );
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Flutter Architecture'));
+    await tester.pumpAndSettle();
+    expect(find.text('Move to folder'), findsOneWidget);
+    expect(find.text('Share'), findsOneWidget);
+    expect(find.text('Details'), findsOneWidget);
+    expect(find.text('Delete'), findsOneWidget);
+
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Note details'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Flutter Architecture'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Move to folder'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Work'));
+    await tester.runAsync(() async {
+      await Future.delayed(const Duration(milliseconds: 150));
+    });
+    await tester.pumpAndSettle();
+
+    final rows = await tester.runAsync(
+      () => db.query('Note', where: 'id = ?', whereArgs: [1]),
+    );
+    expect(rows!.single['categoryId'], category!.id);
+    expect(find.text('Flutter Architecture'), findsOneWidget);
+  });
+
   testWidgets('note card ripple is reset after leaving the note',
       (tester) async {
     final notesProvider = NotesProvider();
@@ -166,7 +213,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.runAsync(() async {
-      await Future.delayed(const Duration(milliseconds: 150));
+      await Future.delayed(const Duration(milliseconds: 300));
     });
     await tester.pumpAndSettle();
 

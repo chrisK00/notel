@@ -277,6 +277,17 @@ class NotesProvider extends ChangeNotifier {
     }
   }
 
+  Future<Note?> duplicateNote(Note source) async {
+    try {
+      final copy = await NotePageRepository.duplicateNote(source);
+      add(copy);
+      return copy;
+    } catch (e) {
+      AppErrors.showError('Failed to duplicate note.');
+      return null;
+    }
+  }
+
   void _sortNotes() {
     _notes.sort((a, b) {
       if (_sort == NoteSort.name) {

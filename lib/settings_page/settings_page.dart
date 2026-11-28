@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:notel/home_page/home_page_repository.dart';
 import 'package:notel/infrastructure/auto_backup_service.dart';
 import 'package:notel/infrastructure/db.dart';
+import 'package:notel/infrastructure/editor_shortcut.dart';
 import 'package:notel/infrastructure/settings_repository.dart';
 import 'package:notel/notes_provider.dart';
 import 'package:notel/utils/simple_encryptor.dart';
@@ -17,7 +18,25 @@ import 'user_guide_page.dart';
 import 'settings_page_repository.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({super.key});
+  const SettingsPage({
+    super.key,
+    this.appTheme = AppTheme.dark,
+    this.onAppThemeChanged,
+    this.themeMode,
+    this.onThemeModeChanged,
+  });
+
+  final AppTheme appTheme;
+  final ValueChanged<AppTheme>? onAppThemeChanged;
+  final ThemeMode? themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+
+  AppTheme get currentTheme {
+    if (themeMode != null) {
+      return themeMode == ThemeMode.light ? AppTheme.light : AppTheme.dark;
+    }
+    return appTheme;
+  }
 
   @override
   State<StatefulWidget> createState() => _SettingsPageState();
@@ -25,19 +44,27 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   var _hideNoteSettings = BoolSettings(BoolSettings.hideNoteTextKey, false);
-  var _showLastModifiedSettings = BoolSettings(BoolSettings.showLastModifiedKey, true);
-  var _shortMonthOnHomeSettings = BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
-  var _autoEditExistingNotesSettings = BoolSettings(BoolSettings.autoEditExistingNotesKey, false);
+  var _showLastModifiedSettings =
+      BoolSettings(BoolSettings.showLastModifiedKey, true);
+  var _shortMonthOnHomeSettings =
+      BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
+  var _autoEditExistingNotesSettings =
+      BoolSettings(BoolSettings.autoEditExistingNotesKey, false);
+  var _restoreActiveNoteSettings =
+      BoolSettings(BoolSettings.restoreActiveNoteKey, true);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
+  double _lastEditedOpacity = .85;
   bool _autoBackupEnabled = false;
   String _autoBackupDirectory = "";
   String _autoBackupPassword = "";
   String? _autoBackupLastDate;
   String _timeShortcut = "..";
+  List<EditorShortcut> _editorShortcuts = [];
   String _message = "";
 
-  final SettingsRepository _settingsRepository = SettingsRepository(Db.instance);
+  final SettingsRepository _settingsRepository =
+      SettingsRepository(Db.instance);
 
   @override
   void initState() {
@@ -55,18 +82,29 @@ class _SettingsPageState extends State<SettingsPage> {
       BoolSettings.fromMap,
     );
     final showModified = await _settingsRepository.getOrNull(
-      BoolSettings.showLastModifiedKey, BoolSettings.fromMap,
+      BoolSettings.showLastModifiedKey,
+      BoolSettings.fromMap,
     );
     final autoEdit = await _settingsRepository.getOrNull(
       BoolSettings.autoEditExistingNotesKey,
+      BoolSettings.fromMap,
+    );
+    final restoreNote = await _settingsRepository.getOrNull(
+      BoolSettings.restoreActiveNoteKey,
       BoolSettings.fromMap,
     );
     final shortMonth = await _settingsRepository.getOrNull(
       BoolSettings.shortMonthOnHomeKey,
       BoolSettings.fromMap,
     );
-    final previewSize = await _settingsRepository.getOrNull(StringSettings.previewFontSizeKey, StringSettings.fromMap);
-    final titleSize = await _settingsRepository.getOrNull(StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    final previewSize = await _settingsRepository.getOrNull(
+        StringSettings.previewFontSizeKey, StringSettings.fromMap);
+    final titleSize = await _settingsRepository.getOrNull(
+        StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    final lastEditedOpacity = await _settingsRepository.getOrNull(
+      StringSettings.lastEditedOpacityKey,
+      StringSettings.fromMap,
+    );
     final autoDir = await _settingsRepository.getOrNull(
       StringSettings.autoBackupDirectoryKey,
       StringSettings.fromMap,
@@ -83,6 +121,10 @@ class _SettingsPageState extends State<SettingsPage> {
       StringSettings.timeShortcutKey,
       StringSettings.fromMap,
     );
+    final editorShortcuts = await _settingsRepository.getOrNull(
+      StringSettings.editorShortcutsKey,
+      StringSettings.fromMap,
+    );
 
     if (!mounted) return;
     setState(() {
@@ -90,20 +132,28 @@ class _SettingsPageState extends State<SettingsPage> {
       if (showModified != null) _showLastModifiedSettings = showModified;
       if (shortMonth != null) _shortMonthOnHomeSettings = shortMonth;
       if (autoEdit != null) _autoEditExistingNotesSettings = autoEdit;
+      if (restoreNote != null) _restoreActiveNoteSettings = restoreNote;
       _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
       _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
+      _lastEditedOpacity =
+          (double.tryParse(lastEditedOpacity?.value ?? '') ?? .85)
+              .clamp(0.0, 1.0)
+              .toDouble();
       _autoBackupEnabled = autoEnabled?.value ?? false;
       _autoBackupDirectory = autoDir?.value ?? "";
       _autoBackupPassword = autoPass?.value ?? "";
       _autoBackupLastDate = autoDate?.value;
       _timeShortcut = timeShortcut?.value ?? "..";
+      _editorShortcuts =
+          EditorShortcut.decodeList(editorShortcuts?.value ?? '');
     });
   }
 
   Widget _sectionLabel(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      child: Text(title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 
@@ -132,7 +182,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   padding: const EdgeInsets.all(12),
                   child: Text(
                     _message,
-                    style: TextStyle(color: Theme.of(context).colorScheme.onPrimaryContainer),
+                    style: TextStyle(
+                        color:
+                            Theme.of(context).colorScheme.onPrimaryContainer),
                   ),
                 ),
               ),
@@ -172,6 +224,41 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 16),
 
+          _sectionLabel('Appearance'),
+          Card(
+            child: Column(
+              children: [
+                RadioListTile<AppTheme>(
+                  secondary: const Icon(Icons.dark_mode_outlined),
+                  title: const Text('Dark'),
+                  subtitle: const Text('Charcoal dark appearance'),
+                  value: AppTheme.dark,
+                  groupValue: widget.currentTheme,
+                  onChanged: _selectAppTheme,
+                ),
+                const Divider(height: 1),
+                RadioListTile<AppTheme>(
+                  secondary: const Icon(Icons.brightness_2),
+                  title: const Text('Pure Black'),
+                  subtitle: const Text('Pitch black for OLED screens'),
+                  value: AppTheme.black,
+                  groupValue: widget.currentTheme,
+                  onChanged: _selectAppTheme,
+                ),
+                const Divider(height: 1),
+                RadioListTile<AppTheme>(
+                  secondary: const Icon(Icons.light_mode_outlined),
+                  title: const Text('Light'),
+                  subtitle: const Text('Bright appearance'),
+                  value: AppTheme.light,
+                  groupValue: widget.currentTheme,
+                  onChanged: _selectAppTheme,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
           _sectionLabel('Text appearance'),
           Card(
             child: Column(
@@ -187,13 +274,25 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
                 ListTile(
-                  title: Text('Preview title (${_previewTitleFontSize.round()}px)'),
+                  title: Text(
+                      'Preview title (${_previewTitleFontSize.round()}px)'),
                   subtitle: Slider(
                     value: _previewTitleFontSize,
                     min: 14,
                     max: 28,
                     divisions: 14,
                     onChanged: _setPreviewTitleFontSize,
+                  ),
+                ),
+                ListTile(
+                  title: Text(
+                      'Last edited opacity (${(_lastEditedOpacity * 100).round()}%)'),
+                  subtitle: Slider(
+                    value: _lastEditedOpacity,
+                    min: 0,
+                    max: 1,
+                    divisions: 20,
+                    onChanged: _setLastEditedOpacity,
                   ),
                 ),
               ],
@@ -213,6 +312,14 @@ class _SettingsPageState extends State<SettingsPage> {
                   onChanged: toggleAutoEditExistingNotes,
                 ),
                 const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.restore_page_outlined),
+                  title: const Text('Resume Last Note'),
+                  subtitle: const Text('Auto-save and resume note if app closed or switched'),
+                  value: _restoreActiveNoteSettings.value,
+                  onChanged: toggleRestoreActiveNote,
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.access_time),
                   title: const Text('Insert Current Time'),
@@ -223,7 +330,8 @@ class _SettingsPageState extends State<SettingsPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(8),
@@ -233,7 +341,9 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onPrimaryContainer,
                           ),
                         ),
                       ),
@@ -242,6 +352,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                   onTap: _editTimeShortcut,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.short_text),
+                  title: const Text('Custom Shortcuts'),
+                  subtitle: Text(_editorShortcuts.isEmpty
+                      ? 'Add text expansions such as .ss → start'
+                      : '${_editorShortcuts.length} shortcut${_editorShortcuts.length == 1 ? '' : 's'} configured'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _editEditorShortcuts,
                 ),
               ],
             ),
@@ -301,14 +421,20 @@ class _SettingsPageState extends State<SettingsPage> {
                         leading: const Icon(Icons.folder_open),
                         title: const Text('Backup Folder'),
                         subtitle: Text(
-                          _autoBackupDirectory.isEmpty ? 'No folder selected (required)' : _autoBackupDirectory,
+                          _autoBackupDirectory.isEmpty
+                              ? 'No folder selected (required)'
+                              : _autoBackupDirectory,
                           style: TextStyle(
-                            color: _autoBackupDirectory.isEmpty ? Colors.red : null,
+                            color: _autoBackupDirectory.isEmpty
+                                ? Colors.red
+                                : null,
                           ),
                         ),
                         trailing: TextButton(
                           onPressed: _pickAutoBackupFolder,
-                          child: Text(_autoBackupDirectory.isEmpty ? 'Select' : 'Change'),
+                          child: Text(_autoBackupDirectory.isEmpty
+                              ? 'Select'
+                              : 'Change'),
                         ),
                       ),
                       const Divider(height: 1),
@@ -320,24 +446,28 @@ class _SettingsPageState extends State<SettingsPage> {
                               ? 'No password set (required)'
                               : '•••••••• (${_autoBackupPassword.length} chars)',
                           style: TextStyle(
-                            color: _autoBackupPassword.isEmpty ? Colors.red : null,
+                            color:
+                                _autoBackupPassword.isEmpty ? Colors.red : null,
                           ),
                         ),
                         trailing: TextButton(
                           onPressed: _changeAutoBackupPassword,
-                          child: Text(_autoBackupPassword.isEmpty ? 'Set' : 'Change'),
+                          child: Text(
+                              _autoBackupPassword.isEmpty ? 'Set' : 'Change'),
                         ),
                       ),
                       const Divider(height: 1),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             FilledButton.tonalIcon(
                               icon: const Icon(Icons.play_arrow, size: 18),
                               label: const Text('Backup Now'),
-                              onPressed: (_autoBackupDirectory.isEmpty || _autoBackupPassword.isEmpty)
+                              onPressed: (_autoBackupDirectory.isEmpty ||
+                                      _autoBackupPassword.isEmpty)
                                   ? null
                                   : _runManualAutoBackupNow,
                             ),
@@ -425,7 +555,8 @@ class _SettingsPageState extends State<SettingsPage> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, textController.text.trim()),
+            onPressed: () =>
+                Navigator.pop(dialogCtx, textController.text.trim()),
             child: const Text('Save'),
           ),
         ],
@@ -439,6 +570,160 @@ class _SettingsPageState extends State<SettingsPage> {
       );
       setState(() => _timeShortcut = result);
     }
+  }
+
+  Future<void> _editEditorShortcuts() async {
+    final shortcuts = [..._editorShortcuts];
+    final result = await showDialog<List<EditorShortcut>>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Custom Shortcuts'),
+          content: SizedBox(
+            width: 420,
+            child: shortcuts.isEmpty
+                ? const Text(
+                    'Add shortcuts like .ss → start. You can make each expansion bold.')
+                : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: shortcuts.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, index) {
+                      final shortcut = shortcuts[index];
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                            '${shortcut.trigger}  →  ${shortcut.replacement}'),
+                        subtitle: shortcut.bold ? const Text('Bold') : null,
+                        trailing: IconButton(
+                          tooltip: 'Delete shortcut',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => setDialogState(
+                            () => shortcuts.removeAt(index),
+                          ),
+                        ),
+                        onTap: () async {
+                          final edited = await _editSingleEditorShortcut(
+                            initial: shortcut,
+                          );
+                          if (edited != null) {
+                            setDialogState(() => shortcuts[index] = edited);
+                          }
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton.icon(
+              onPressed: () async {
+                final shortcut = await _editSingleEditorShortcut();
+                if (shortcut != null) {
+                  setDialogState(() => shortcuts.add(shortcut));
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, shortcuts),
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null) return;
+    await _settingsRepository.insertOrUpdate(
+      StringSettings.editorShortcutsKey,
+      () => StringSettings(
+        StringSettings.editorShortcutsKey,
+        EditorShortcut.encodeList(result),
+      ).toMap(),
+    );
+    if (mounted) setState(() => _editorShortcuts = result);
+  }
+
+  Future<EditorShortcut?> _editSingleEditorShortcut({
+    EditorShortcut? initial,
+  }) async {
+    final triggerController =
+        TextEditingController(text: initial?.trigger ?? '');
+    final replacementController =
+        TextEditingController(text: initial?.replacement ?? '');
+    var bold = initial?.bold ?? false;
+    return showDialog<EditorShortcut>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(initial == null ? 'Add Shortcut' : 'Edit Shortcut'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'The replacement is inserted immediately after you type the shortcut.',
+                  style: TextStyle(fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: triggerController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Shortcut',
+                    hintText: 'e.g. .ss',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: replacementController,
+                  decoration: const InputDecoration(
+                    labelText: 'Replacement text',
+                    hintText: 'e.g. start',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Bold replacement'),
+                  value: bold,
+                  onChanged: (value) =>
+                      setDialogState(() => bold = value ?? false),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final trigger = triggerController.text.trim();
+                final replacement = replacementController.text;
+                if (trigger.isEmpty || replacement.isEmpty) return;
+                Navigator.pop(
+                  dialogCtx,
+                  EditorShortcut(
+                    trigger: trigger,
+                    replacement: replacement,
+                    bold: bold,
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _formatLastBackupDate(String isoString) {
@@ -475,7 +760,9 @@ class _SettingsPageState extends State<SettingsPage> {
       setState(() => _autoBackupDirectory = selectedDir.trim());
       await _settingsRepository.insertOrUpdate(
         StringSettings.autoBackupDirectoryKey,
-        StringSettings(StringSettings.autoBackupDirectoryKey, selectedDir.trim()).toMap,
+        StringSettings(
+                StringSettings.autoBackupDirectoryKey, selectedDir.trim())
+            .toMap,
       );
       setState(() => _message = 'Backup folder set');
     }
@@ -498,16 +785,19 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _runManualAutoBackupNow() async {
     setState(() => _message = 'Running backup...');
-    final file = await AutoBackupService.performAutoBackup(repo: _settingsRepository);
+    final file =
+        await AutoBackupService.performAutoBackup(repo: _settingsRepository);
     if (!mounted) return;
     if (file != null) {
       final now = DateTime.now().toIso8601String();
       setState(() {
         _autoBackupLastDate = now;
-        _message = 'Backup created: ${file.path.split(Platform.pathSeparator).last}';
+        _message =
+            'Backup created: ${file.path.split(Platform.pathSeparator).last}';
       });
     } else {
-      setState(() => _message = 'Failed to create backup. Check folder and password.');
+      setState(() =>
+          _message = 'Failed to create backup. Check folder and password.');
     }
   }
 
@@ -543,13 +833,26 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> toggleHideNoteText(bool newSettings) async {
     setState(() => _hideNoteSettings.value = newSettings);
-    await _settingsRepository.insertOrUpdate(_hideNoteSettings.id, _hideNoteSettings.toMap);
+    await _settingsRepository.insertOrUpdate(
+        _hideNoteSettings.id, _hideNoteSettings.toMap);
+  }
+
+  void _selectAppTheme(AppTheme? theme) {
+    if (theme != null) {
+      widget.onAppThemeChanged?.call(theme);
+      if (theme == AppTheme.light) {
+        widget.onThemeModeChanged?.call(ThemeMode.light);
+      } else {
+        widget.onThemeModeChanged?.call(ThemeMode.dark);
+      }
+    }
   }
 
   Future<void> toggleShowLastModified(bool value) async {
     setState(() => _showLastModifiedSettings.value = value);
     await _settingsRepository.insertOrUpdate(
-      _showLastModifiedSettings.id, _showLastModifiedSettings.toMap,
+      _showLastModifiedSettings.id,
+      _showLastModifiedSettings.toMap,
     );
   }
 
@@ -569,17 +872,41 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Future<void> toggleRestoreActiveNote(bool value) async {
+    setState(() => _restoreActiveNoteSettings.value = value);
+    await _settingsRepository.insertOrUpdate(
+      _restoreActiveNoteSettings.id,
+      _restoreActiveNoteSettings.toMap,
+    );
+  }
+
   Future<void> _setPreviewFontSize(double value) async {
     setState(() => _previewFontSize = value);
-    await _settingsRepository.insertOrUpdate(StringSettings.previewFontSizeKey, () => StringSettings(StringSettings.previewFontSizeKey, value.toString()).toMap());
+    await _settingsRepository.insertOrUpdate(
+        StringSettings.previewFontSizeKey,
+        () =>
+            StringSettings(StringSettings.previewFontSizeKey, value.toString())
+                .toMap());
   }
 
   Future<void> _setPreviewTitleFontSize(double value) async {
     setState(() => _previewTitleFontSize = value);
-    await _settingsRepository.insertOrUpdate(StringSettings.previewTitleFontSizeKey,
-        () => StringSettings(StringSettings.previewTitleFontSizeKey, value.toString()).toMap());
+    await _settingsRepository.insertOrUpdate(
+        StringSettings.previewTitleFontSizeKey,
+        () => StringSettings(
+                StringSettings.previewTitleFontSizeKey, value.toString())
+            .toMap());
   }
 
+  Future<void> _setLastEditedOpacity(double value) async {
+    setState(() => _lastEditedOpacity = value);
+    await _settingsRepository.insertOrUpdate(
+      StringSettings.lastEditedOpacityKey,
+      () =>
+          StringSettings(StringSettings.lastEditedOpacityKey, value.toString())
+              .toMap(),
+    );
+  }
 
   Future<void> exportNotes() async {
     try {
@@ -587,10 +914,12 @@ class _SettingsPageState extends State<SettingsPage> {
       if (encryptionKey == null || encryptionKey.isEmpty) return;
 
       final backupPayload = await SettingsPageRepository.createBackupPayload();
-      final encrypted = await SimpleEncryptor.encodeAsync(jsonEncode(backupPayload), encryptionKey);
+      final encrypted = await SimpleEncryptor.encodeAsync(
+          jsonEncode(backupPayload), encryptionKey);
 
       final targetDir = await getTemporaryDirectory();
-      final fileName = 'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
+      final fileName =
+          'notel_backup_${DateFormat('yyyyMMdd').format(DateTime.now())}.bin';
       final filePath = '${targetDir.path}/$fileName';
 
       final file = File(filePath);
@@ -605,7 +934,9 @@ class _SettingsPageState extends State<SettingsPage> {
         setState(() => _message = 'Export complete');
         await _settingsRepository.insertOrUpdate(
           StringSettings.lastExportReminderKey,
-          StringSettings(StringSettings.lastExportReminderKey, DateTime.now().toString()).toMap,
+          StringSettings(StringSettings.lastExportReminderKey,
+                  DateTime.now().toString())
+              .toMap,
         );
       } else {
         setState(() => _message = '${result.status}: ${result.raw}');
@@ -630,7 +961,8 @@ class _SettingsPageState extends State<SettingsPage> {
       final file = File(result.files.single.path!);
       final fileContent = await file.readAsString();
 
-      final decryptedJson = await SimpleEncryptor.decryptAsync(fileContent, encryptionKey);
+      final decryptedJson =
+          await SimpleEncryptor.decryptAsync(fileContent, encryptionKey);
       final dynamic decoded = jsonDecode(decryptedJson);
 
       await SettingsPageRepository.restoreBackupPayload(decoded);
@@ -638,13 +970,15 @@ class _SettingsPageState extends State<SettingsPage> {
       if (mounted) {
         final provider = Provider.of<NotesProvider>(context, listen: false);
         await provider.loadCategories();
-        final loadedNotes = await HomePageRepository.loadNotes(categoryId: provider.selectedCategory?.id);
+        final loadedNotes = await HomePageRepository.loadNotes(
+            categoryId: provider.selectedCategory?.id);
         provider.init(loadedNotes);
       }
 
       setState(() => _message = 'Import complete');
     } catch (e) {
-      if (e.toString().contains('integrity') || e.toString().contains('padding')) {
+      if (e.toString().contains('integrity') ||
+          e.toString().contains('padding')) {
         setState(() => _message = 'Wrong encryption key!');
       } else {
         setState(() => _message = 'Error: ${e.toString()}');

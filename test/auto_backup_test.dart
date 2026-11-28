@@ -25,9 +25,24 @@ void main() {
       inMemoryDatabasePath,
       version: 5,
       onCreate: (db, version) async {
-        await db.execute("CREATE TABLE Note(id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER, hidden INTEGER NOT NULL DEFAULT 0)");
-        await db.execute("CREATE TABLE Settings(id TEXT PRIMARY KEY, value TEXT)");
-        await db.execute("CREATE TABLE Category(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)");
+        await db.execute(
+            "CREATE TABLE Note(id INTEGER PRIMARY KEY, text TEXT, date TEXT, title TEXT, lastModified TEXT, categoryId INTEGER, hidden INTEGER NOT NULL DEFAULT 0)");
+        await db
+            .execute("CREATE TABLE Settings(id TEXT PRIMARY KEY, value TEXT)");
+        await db.execute(
+            "CREATE TABLE Category(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)");
+        await db.execute('''
+          CREATE TABLE NoteComment(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            noteId INTEGER NOT NULL,
+            parentId INTEGER,
+            quotedText TEXT NOT NULL,
+            startOffset INTEGER NOT NULL,
+            endOffset INTEGER NOT NULL,
+            body TEXT NOT NULL,
+            createdAt TEXT NOT NULL
+          )
+        ''');
       },
     );
     Db.instance = db;
@@ -42,11 +57,13 @@ void main() {
   });
 
   test('AutoBackupService should not run if disabled', () async {
-    final shouldRun = await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
+    final shouldRun =
+        await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
     expect(shouldRun, isFalse);
   });
 
-  test('AutoBackupService should run when enabled with folder and password', () async {
+  test('AutoBackupService should run when enabled with folder and password',
+      () async {
     await settingsRepo.insertOrUpdate(
       BoolSettings.autoBackupEnabledKey,
       BoolSettings(BoolSettings.autoBackupEnabledKey, true).toMap,
@@ -60,20 +77,32 @@ void main() {
       StringSettings(StringSettings.autoBackupPasswordKey, 'secret123').toMap,
     );
 
-    final shouldRun = await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
+    final shouldRun =
+        await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
     expect(shouldRun, isTrue);
 
     // Create test category and note
     final cat = await CategoryRepository.create('Health');
-    await NotePageRepository.createNote(categoryId: cat.id);
+    final note = await NotePageRepository.createNote(categoryId: cat.id);
+    await db.insert('NoteComment', {
+      'noteId': note.id,
+      'parentId': null,
+      'quotedText': 'exercise',
+      'startOffset': 0,
+      'endOffset': 8,
+      'body': 'Try this variation.',
+      'createdAt': DateTime.now().toIso8601String(),
+    });
 
     // Perform backup
-    final backupFile = await AutoBackupService.performAutoBackup(repo: settingsRepo);
+    final backupFile =
+        await AutoBackupService.performAutoBackup(repo: settingsRepo);
     expect(backupFile, isNotNull);
     expect(await backupFile!.exists(), isTrue);
 
     // Verify latest snapshot was also created
-    final latestFile = File('${tempDir.path}${Platform.pathSeparator}notel_backup_latest.enc');
+    final latestFile =
+        File('${tempDir.path}${Platform.pathSeparator}notel_backup_latest.enc');
     expect(await latestFile.exists(), isTrue);
 
     // Verify content can be decrypted
@@ -84,9 +113,11 @@ void main() {
     expect(payload['version'], 1);
     expect((payload['categories'] as List).length, 1);
     expect((payload['notes'] as List).length, 1);
+    expect((payload['comments'] as List).length, 1);
 
     // Now shouldPerformAutoBackup should be false (since backup just ran)
-    final shouldRunAgain = await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
+    final shouldRunAgain =
+        await AutoBackupService.shouldPerformAutoBackup(settingsRepo);
     expect(shouldRunAgain, isFalse);
   });
 
@@ -105,9 +136,12 @@ void main() {
     );
 
     // Create 3 fake older backup files
-    final old1 = File('${tempDir.path}${Platform.pathSeparator}notel_backup_20260101.enc');
-    final old2 = File('${tempDir.path}${Platform.pathSeparator}notel_backup_20260108.enc');
-    final old3 = File('${tempDir.path}${Platform.pathSeparator}notel_backup_20260115.enc');
+    final old1 = File(
+        '${tempDir.path}${Platform.pathSeparator}notel_backup_20260101.enc');
+    final old2 = File(
+        '${tempDir.path}${Platform.pathSeparator}notel_backup_20260108.enc');
+    final old3 = File(
+        '${tempDir.path}${Platform.pathSeparator}notel_backup_20260115.enc');
     await old1.writeAsString('1');
     await old2.writeAsString('2');
     await old3.writeAsString('3');
@@ -115,7 +149,10 @@ void main() {
     await AutoBackupService.performAutoBackup(repo: settingsRepo);
 
     // Should keep 2 most recent dated backups + latest.enc
-    final files = tempDir.listSync().map((e) => e.path.split(Platform.pathSeparator).last).toList();
+    final files = tempDir
+        .listSync()
+        .map((e) => e.path.split(Platform.pathSeparator).last)
+        .toList();
     expect(files.contains('notel_backup_20260101.enc'), isFalse);
     expect(files.contains('notel_backup_20260108.enc'), isFalse);
     expect(files.contains('notel_backup_20260115.enc'), isTrue);

@@ -1,6 +1,18 @@
 import 'package:notel/infrastructure/db.dart';
 import 'package:sqflite/sqflite.dart';
 
+enum AppTheme {
+  dark,
+  black,
+  light;
+
+  static AppTheme fromString(String? value) {
+    if (value == AppTheme.light.name) return AppTheme.light;
+    if (value == AppTheme.black.name) return AppTheme.black;
+    return AppTheme.dark;
+  }
+}
+
 class BoolSettings {
   BoolSettings(this.id, this.value);
   String id;
@@ -11,6 +23,7 @@ class BoolSettings {
   static const showLastModifiedKey = "showLastModified";
   static const autoEditExistingNotesKey = "autoEditExistingNotes";
   static const shortMonthOnHomeKey = "shortMonthOnHome";
+  static const restoreActiveNoteKey = "restoreActiveNote";
 
   factory BoolSettings.fromMap(Map<String, dynamic> map) => BoolSettings(
         map['id'],
@@ -30,9 +43,14 @@ class StringSettings {
   static const autoBackupPasswordKey = "autoBackupPassword";
   static const autoBackupLastDateKey = "autoBackupLastDate";
   static const timeShortcutKey = "timeShortcutKey";
+  static const editorShortcutsKey = "editorShortcutsKey";
   static const previewFontSizeKey = "previewFontSize";
   static const previewTitleFontSizeKey = "previewTitleFontSize";
-  static String categoryHiddenDefaultKey(int categoryId) => 'categoryHiddenDefault:$categoryId';
+  static const lastEditedOpacityKey = "lastEditedOpacity";
+  static const themeModeKey = "themeMode";
+  static const activeNoteIdKey = "activeNoteId";
+  static String categoryHiddenDefaultKey(int categoryId) =>
+      'categoryHiddenDefault:$categoryId';
 
   factory StringSettings.fromMap(Map<String, dynamic> map) =>
       StringSettings(map['id'], map['value'] as String);

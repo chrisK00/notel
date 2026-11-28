@@ -1,14 +1,66 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
+
+import 'calculator_sheet.dart';
+import 'exercise_embed.dart';
+import 'image_embed.dart';
+import 'comment_threads_sheet.dart';
 import 'notel_clipboard.dart';
 import 'section_divider.dart';
+import 'timer_sheet.dart';
 
 class NoteTextToolbar extends StatelessWidget {
-  const NoteTextToolbar({super.key, required QuillController controller})
-      : _controller = controller;
+  const NoteTextToolbar({
+    super.key,
+    required QuillController controller,
+    required this.noteId,
+  }) : _controller = controller;
 
   final QuillController _controller;
+  final int noteId;
+
+  Future<void> _showComments(BuildContext context) {
+    final selection = _controller.selection;
+    final validSelection = selection.isValid && !selection.isCollapsed;
+    final startOffset = validSelection ? selection.start : 0;
+    final endOffset = validSelection ? selection.end : 0;
+    final quotedText = validSelection
+        ? _controller.document
+            .getPlainText(startOffset, endOffset - startOffset)
+        : '';
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => CommentThreadsSheet(
+        noteId: noteId,
+        quotedText: quotedText,
+        startOffset: startOffset,
+        endOffset: endOffset,
+      ),
+    );
+  }
+
+  void _showCalculator(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => CalculatorSheet(controller: _controller),
+    );
+  }
+
+  void _showTimer(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const TimerSheet(),
+    );
+  }
 
   void _showHeaderPicker(BuildContext context) {
     showModalBottomSheet<void>(
@@ -87,7 +139,7 @@ class NoteTextToolbar extends StatelessWidget {
               showSuperscript: true,
               showClearFormat: true,
               showAlignmentButtons: true,
-              showIndent: true,
+              showIndent: false,
               showFontFamily: false,
               showBoldButton: false,
               showItalicButton: true,
@@ -98,7 +150,7 @@ class NoteTextToolbar extends StatelessWidget {
               showHeaderStyle: false,
               showListNumbers: true,
               showListBullets: false,
-              showListCheck: true,
+              showListCheck: false,
               showCodeBlock: true,
               showQuote: true,
               showLink: false,
@@ -192,6 +244,35 @@ class NoteTextToolbar extends StatelessWidget {
     );
   }
 
+  Future<void> _insertExercise(BuildContext context) async {
+    final exercise = await showExerciseDialog(context);
+    if (exercise == null) return;
+
+    final selection = _controller.selection;
+    if (!selection.isValid) return;
+    final plainText = _controller.document.toPlainText();
+    final start = selection.start;
+    final end = selection.end;
+    final insertion = Delta();
+
+    if (start > 0 && plainText[start - 1] != '\n') {
+      insertion.insert('\n');
+    }
+    insertion.insert({
+      ExerciseEmbedBuilder.type: jsonEncode(exercise.toJson()),
+    });
+    if (end < plainText.length && plainText[end] != '\n') {
+      insertion.insert('\n');
+    }
+
+    _controller.replaceText(
+      start,
+      selection.end - selection.start,
+      insertion,
+      TextSelection.collapsed(offset: start + insertion.length.toInt()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -234,10 +315,10 @@ class NoteTextToolbar extends StatelessWidget {
             showSubscript: false,
             showSuperscript: false,
             showClearFormat: false,
-            showIndent: false,
+            showIndent: true,
             showListNumbers: false,
             showListBullets: true,
-            showListCheck: false,
+            showListCheck: true,
             showQuote: false,
             showLink: false,
             showClipboardCopy: false,
@@ -260,6 +341,26 @@ class NoteTextToolbar extends StatelessWidget {
                 onPressed: _insertSectionDivider,
               ),
               QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.fitness_center, size: 18),
+                tooltip: 'Insert exercise',
+                onPressed: () => _insertExercise(context),
+              ),
+              QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.mode_comment_outlined, size: 18),
+                tooltip: 'Comments',
+                onPressed: () => _showComments(context),
+              ),
+              QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.calculate_outlined, size: 18),
+                tooltip: 'Calculator',
+                onPressed: () => _showCalculator(context),
+              ),
+              QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.timer_outlined, size: 18),
+                tooltip: 'Timer',
+                onPressed: () => _showTimer(context),
+              ),
+              QuillToolbarCustomButtonOptions(
                 icon: const Icon(Icons.copy, size: 18),
                 tooltip: 'Copy formatted text',
                 onPressed: () => NotelClipboard.copySelection(_controller),
@@ -273,6 +374,11 @@ class NoteTextToolbar extends StatelessWidget {
                 icon: const Icon(Icons.link, size: 18),
                 tooltip: 'Insert URL',
                 onPressed: () => _showLinkDialog(context),
+              ),
+              QuillToolbarCustomButtonOptions(
+                icon: const Icon(Icons.image_outlined, size: 18),
+                tooltip: 'Insert image',
+                onPressed: () => pickAndInsertImage(context, _controller),
               ),
               QuillToolbarCustomButtonOptions(
                 icon: const Icon(Icons.more_horiz, size: 18),

@@ -14,13 +14,14 @@ void main() {
           'start zo\\n'
           'stop zo 25 apa\\n'
           'start zo 25 mg\\n'
+          'start desonix 2mg\\n'
           'ordinary text\\n'
           '"}]',
     );
 
     final entries = ActivityLogEntry.fromNote(note);
 
-    expect(entries, hasLength(4));
+    expect(entries, hasLength(5));
     expect(entries[0].action, ActivityLogAction.start);
     expect(entries[0].activity, 'zo 25mg');
     expect(entries[0].activityName, 'zo');
@@ -35,6 +36,8 @@ void main() {
     expect(entries[3].activity, 'zo 25 mg');
     expect(entries[3].activityKey, entries[0].activityKey);
     expect(entries[2].activityKey, entries[0].activityKey);
+    expect(entries[4].activityName, 'desonix');
+    expect(entries[4].activity, 'desonix 2mg');
   });
 
   test('ignores invalid clock values and parses plain text notes', () {

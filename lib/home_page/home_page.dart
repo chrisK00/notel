@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:notel/console.dart';
@@ -14,11 +15,17 @@ import 'package:notel/note_page/note_page_repository.dart';
 import 'package:notel/search/search_query.dart';
 import 'package:notel/search/search_query_parser.dart';
 import 'package:notel/utils/extensions.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import '../note_page/edit_page.dart';
 import '../infrastructure/note.dart';
 import '../notes_provider.dart';
 import 'home_page_repository.dart';
+import '../note_page/image_embed.dart';
+
+enum _NoteAction { move, share, details, duplicate, delete }
+
+enum _CreateAction { blank, inFolder, fromTemplate }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -40,6 +47,7 @@ class _HomePageState extends State<HomePage> {
       BoolSettings(BoolSettings.shortMonthOnHomeKey, false);
   double _previewFontSize = 14;
   double _previewTitleFontSize = 17;
+  double _lastEditedOpacity = .85;
   Timer? _searchDebounce;
   Timer? _noteLoadingTimer;
   int _searchRequestId = 0;
@@ -73,6 +81,8 @@ class _HomePageState extends State<HomePage> {
         StringSettings.previewFontSizeKey, StringSettings.fromMap);
     final titleSize = await _settingsRepository.getOrNull(
         StringSettings.previewTitleFontSizeKey, StringSettings.fromMap);
+    final lastEditedOpacity = await _settingsRepository.getOrNull(
+        StringSettings.lastEditedOpacityKey, StringSettings.fromMap);
     if (!mounted) return;
     setState(() {
       if (settings != null) _hideNoteTextSettings = settings;
@@ -80,6 +90,9 @@ class _HomePageState extends State<HomePage> {
       if (shortMonth != null) _shortMonthOnHomeSettings = shortMonth;
       _previewFontSize = double.tryParse(previewSize?.value ?? '') ?? 14;
       _previewTitleFontSize = double.tryParse(titleSize?.value ?? '') ?? 17;
+      _lastEditedOpacity = (double.tryParse(lastEditedOpacity?.value ?? '') ?? .85)
+          .clamp(0.0, 1.0)
+          .toDouble();
     });
   }
 
@@ -869,20 +882,216 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _showNoteActions(
+    BuildContext context,
+    NotesProvider provider,
+    Note note,
+  ) async {
+    final action = await showModalBottomSheet<_NoteAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.drive_file_move_outlined),
+              title: const Text('Move to folder'),
+              onTap: () => Navigator.pop(context, _NoteAction.move),
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Share'),
+              onTap: () => Navigator.pop(context, _NoteAction.share),
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: const Text('Duplicate'),
+              onTap: () => Navigator.pop(context, _NoteAction.duplicate),
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('Details'),
+              onTap: () => Navigator.pop(context, _NoteAction.details),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onTap: () => Navigator.pop(context, _NoteAction.delete),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || !context.mounted || action == null) return;
+
+    switch (action) {
+      case _NoteAction.move:
+        await _moveNoteToFolder(provider, note);
+      case _NoteAction.share:
+        await _shareNote(note);
+      case _NoteAction.details:
+        _showNoteDetails(provider, note);
+      case _NoteAction.duplicate:
+        final copy = await provider.duplicateNote(note);
+        if (copy != null && mounted && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Note duplicated'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      case _NoteAction.delete:
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => YesOrNoDialog(
+            title:
+                "Delete '${note.title?.trim().isNotEmpty == true ? note.title : 'this note'}'?",
+            dangerBtnText: 'Delete',
+            successBtnText: 'Cancel',
+          ),
+        );
+        if (confirmed == false) await provider.remove(note.id);
+    }
+  }
+
+  Future<void> _moveNoteToFolder(NotesProvider provider, Note note) async {
+    final targetId = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Move to folder'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 320,
+          child: ListView(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder_off_outlined),
+                title: const Text('No folder'),
+                trailing:
+                    note.categoryId == null ? const Icon(Icons.check) : null,
+                onTap: () => Navigator.pop(context, -1),
+              ),
+              for (final category in provider.categories)
+                ListTile(
+                  leading: Icon(
+                    CategoryIcons.forKey(category.iconKey),
+                    color: CategoryIcons.colorFor(category.iconColor),
+                  ),
+                  title: Text(category.name),
+                  trailing: note.categoryId == category.id
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.pop(context, category.id),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || targetId == null) return;
+    final categoryId = targetId == -1 ? null : targetId;
+    if (categoryId == note.categoryId) return;
+
+    try {
+      final changed =
+          await NotePageRepository.updateNoteCategory(note.id, categoryId);
+      if (changed == 0) throw StateError('Note no longer exists.');
+      await provider.update(note.id);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not move note: $error')),
+      );
+    }
+  }
+
+  Future<void> _shareNote(Note preview) async {
+    try {
+      final note = await NotePageRepository.getNoteById(preview.id);
+      final title = note.title?.trim();
+      final shareTitle = title?.isNotEmpty == true ? title! : 'Notel note';
+      final body = _plainTextForSharing(note.displayText);
+      final text =
+          [shareTitle, body].where((part) => part.isNotEmpty).join('\n\n');
+      await Share.share(text, subject: shareTitle);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not share note: $error')),
+      );
+    }
+  }
+
+  String _plainTextForSharing(String content) {
+    try {
+      final decoded = jsonDecode(content);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((operation) => operation['insert'])
+            .whereType<String>()
+            .join()
+            .trim();
+      }
+    } on FormatException {
+      return content.trim();
+    }
+    return content.trim();
+  }
+
+  void _showNoteDetails(NotesProvider provider, Note note) {
+    final category = provider.categories
+        .where((category) => category.id == note.categoryId)
+        .firstOrNull;
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Note details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+                'Created: ${DateFormat('d MMM yyyy').format(note.date.toDateTime())}'),
+            const SizedBox(height: 8),
+            Text(
+              'Last edited: ${note.lastModified == null ? 'Not available' : DateFormat('d MMM yyyy, HH:mm').format(note.lastModified!)}',
+            ),
+            const SizedBox(height: 8),
+            Text('Folder: ${category?.name ?? 'None'}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget noteRow(BuildContext context, Note n) {
-    final category =
-        Provider.of<NotesProvider>(context, listen: false).selectedCategory;
+    final provider = Provider.of<NotesProvider>(context, listen: false);
+    final category = provider.selectedCategory;
     final showNoteDate = category?.showNoteDate ?? true;
     final categoryWithoutNoteDate = category != null && !showNoteDate;
     final showLastModified =
         category?.showLastModified ?? _showLastModifiedSettings.value;
     writeLine("Title ${n.title}");
+
+    // When dates are hidden, show the first image from the note in that slot.
+    final imagePath =
+        categoryWithoutNoteDate ? firstImagePath(n.displayText) : null;
+
     final row = ConstrainedBox(
       constraints: BoxConstraints(minHeight: categoryWithoutNoteDate ? 77 : 72),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: showNoteDate ? 16 : 20,
-          vertical: showNoteDate ? 8 : 20,
+          horizontal: showNoteDate ? 16 : (imagePath != null ? 12 : 20),
+          vertical: showNoteDate ? 8 : (imagePath != null ? 10 : 20),
         ),
         child: IntrinsicHeight(
           child: Row(
@@ -933,6 +1142,9 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(width: 12),
+              ] else if (imagePath != null) ...[
+                buildNoteImageThumbnail(imagePath, size: 56),
+                const SizedBox(width: 12),
               ],
               Expanded(
                 child: Column(
@@ -973,7 +1185,7 @@ class _HomePageState extends State<HomePage> {
                                         .textTheme
                                         .bodySmall
                                         ?.color
-                                        ?.withOpacity(.85),
+                                        ?.withOpacity(_lastEditedOpacity),
                                   ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -994,6 +1206,7 @@ class _HomePageState extends State<HomePage> {
         splashColor: onSurface.withOpacity(0.04),
         highlightColor: onSurface.withOpacity(0.03),
         onTap: () => _openNote(context, n),
+        onLongPress: () => _showNoteActions(context, provider, n),
         child: row,
       ),
     );
@@ -1061,10 +1274,77 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  FloatingActionButton addNoteButton(
+  Widget addNoteButton(
       BuildContext context, NotesProvider provider) {
-    return FloatingActionButton(
-      onPressed: () async {
+    return GestureDetector(
+      onLongPress: () => _showCreateNoteMenu(context, provider),
+      child: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (c) =>
+                  NewNotePage(categoryId: provider.selectedCategory?.id),
+            ),
+          );
+        },
+        child: const Icon(
+          Icons.add,
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreateNoteMenu(
+      BuildContext context, NotesProvider provider) async {
+    // Build a list of notes that can act as templates (all notes with a title or content).
+    final templates = provider.notes
+        .where((n) =>
+            n.title?.trim().isNotEmpty == true ||
+            n.displayText.trim().isNotEmpty)
+        .toList();
+
+    final action = await showModalBottomSheet<_CreateAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Create note',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('New note'),
+              onTap: () => Navigator.pop(context, _CreateAction.blank),
+            ),
+            if (provider.categories.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.create_new_folder_outlined),
+                title: const Text('New note in folder'),
+                onTap: () => Navigator.pop(context, _CreateAction.inFolder),
+              ),
+            if (templates.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.file_copy_outlined),
+                title: const Text('New from template'),
+                onTap: () => Navigator.pop(context, _CreateAction.fromTemplate),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || !context.mounted || action == null) return;
+
+    switch (action) {
+      case _CreateAction.blank:
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -1072,10 +1352,114 @@ class _HomePageState extends State<HomePage> {
                 NewNotePage(categoryId: provider.selectedCategory?.id),
           ),
         );
-      },
-      child: const Icon(
-        Icons.add,
-        size: 40,
+      case _CreateAction.inFolder:
+        await _createNoteInFolder(context, provider);
+      case _CreateAction.fromTemplate:
+        await _createNoteFromTemplate(context, provider, templates);
+    }
+  }
+
+  Future<void> _createNoteInFolder(
+      BuildContext context, NotesProvider provider) async {
+    final targetId = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose folder'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 320,
+          child: ListView(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder_off_outlined),
+                title: const Text('No folder'),
+                trailing: provider.selectedCategory == null
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => Navigator.pop(context, -1),
+              ),
+              for (final category in provider.categories)
+                ListTile(
+                  leading: Icon(
+                    CategoryIcons.forKey(category.iconKey),
+                    color: CategoryIcons.colorFor(category.iconColor),
+                  ),
+                  title: Text(category.name),
+                  trailing: provider.selectedCategory?.id == category.id
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => Navigator.pop(context, category.id),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || !context.mounted || targetId == null) return;
+    final categoryId = targetId == -1 ? null : targetId;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (c) => NewNotePage(categoryId: categoryId),
+      ),
+    );
+  }
+
+  Future<void> _createNoteFromTemplate(BuildContext context,
+      NotesProvider provider, List<Note> templates) async {
+    final template = await showModalBottomSheet<Note>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        builder: (context, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Choose template',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                controller: scrollController,
+                itemCount: templates.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final t = templates[index];
+                  final label = t.title?.trim().isNotEmpty == true
+                      ? t.title!
+                      : t.displayText.trim();
+                  return ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => Navigator.pop(context, t),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || !context.mounted || template == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (c) => NewNotePage(
+          categoryId: provider.selectedCategory?.id,
+          templateNote: template,
+        ),
       ),
     );
   }
